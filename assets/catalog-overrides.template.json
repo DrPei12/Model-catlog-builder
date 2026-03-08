@@ -1,0 +1,38 @@
+{
+  "providers": {
+    "openai": {
+      "recommendedModelIds": [
+        "gpt-5-mini",
+        "gpt-5.4-pro"
+      ],
+      "hiddenModelIds": [],
+      "pinnedAliases": {
+        "gpt-5-chat-latest": "gpt-5.2-chat-latest"
+      },
+      "models": {
+        "gpt-5.4-pro": {
+          "displayName": "GPT-5.4 Pro",
+          "recommended": true
+        }
+      }
+    },
+    "anthropic": {
+      "recommendedModelIds": [],
+      "hiddenModelIds": [],
+      "pinnedAliases": {},
+      "models": {}
+    },
+    "google": {
+      "recommendedModelIds": [],
+      "hiddenModelIds": [],
+      "pinnedAliases": {},
+      "models": {}
+    },
+    "openrouter": {
+      "recommendedModelIds": [],
+      "hiddenModelIds": [],
+      "pinnedAliases": {},
+      "models": {}
+    }
+  }
+}

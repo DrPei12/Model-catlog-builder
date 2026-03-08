@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Provider-first model catalog",
+  "type": "object",
+  "required": [
+    "generatedAt",
+    "sourceStatus",
+    "providers"
+  ],
+  "properties": {
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sourceStatus": {
+      "type": "object"
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "providerId",
+          "displayName",
+          "models",
+          "collections"
+        ],
+        "properties": {
+          "providerId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "auth": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "discovery": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "collections": {
+            "type": "object"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "modelId",
+                "displayName",
+                "stage",
+                "sources"
+              ],
+              "properties": {
+                "modelId": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "family": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "vendorId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "stage": {
+                  "type": "string"
+                },
+                "releaseDate": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "lastUpdated": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "contextWindow": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "maxOutputTokens": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "capabilities": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "pricing": {
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "recommended": {
+                  "type": "boolean"
+                },
+                "hidden": {
+                  "type": "boolean"
+                },
+                "sources": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

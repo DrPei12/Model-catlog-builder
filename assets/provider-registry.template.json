@@ -1,0 +1,216 @@
+{
+  "providers": [
+    {
+      "providerId": "openai",
+      "displayName": "OpenAI",
+      "auth": {
+        "strategy": "apiKey",
+        "fields": [
+          {
+            "id": "apiKey",
+            "label": "API Key",
+            "type": "password",
+            "required": true,
+            "placeholder": "sk-..."
+          }
+        ],
+        "helpText": "Create an API key in the OpenAI dashboard."
+      },
+      "discovery": {
+        "mode": "official-plus-fallback",
+        "officialListEndpoint": "https://api.openai.com/v1/models",
+        "supportsManualAllowlist": true
+      }
+    },
+    {
+      "providerId": "anthropic",
+      "displayName": "Anthropic",
+      "auth": {
+        "strategy": "apiKey",
+        "fields": [
+          {
+            "id": "apiKey",
+            "label": "API Key",
+            "type": "password",
+            "required": true,
+            "placeholder": "sk-ant-..."
+          }
+        ],
+        "helpText": "Create an API key in the Anthropic Console."
+      },
+      "discovery": {
+        "mode": "official-plus-fallback",
+        "officialListEndpoint": "https://api.anthropic.com/v1/models",
+        "supportsManualAllowlist": true
+      }
+    },
+    {
+      "providerId": "google",
+      "displayName": "Google Gemini",
+      "auth": {
+        "strategy": "apiKey",
+        "fields": [
+          {
+            "id": "apiKey",
+            "label": "API Key",
+            "type": "password",
+            "required": true,
+            "placeholder": "AIza..."
+          }
+        ],
+        "helpText": "Create an API key in Google AI Studio."
+      },
+      "discovery": {
+        "mode": "official-plus-fallback",
+        "officialListEndpoint": "https://generativelanguage.googleapis.com/v1beta/models",
+        "supportsManualAllowlist": true
+      }
+    },
+    {
+      "providerId": "qwen",
+      "displayName": "Qwen",
+      "auth": {
+        "strategy": "apiKey",
+        "fields": [
+          {
+            "id": "apiKey",
+            "label": "API Key",
+            "type": "password",
+            "required": true
+          }
+        ],
+        "helpText": "Use the provider API key or a compatible gateway key."
+      },
+      "discovery": {
+        "mode": "official-or-compatible",
+        "officialListEndpoint": "",
+        "supportsManualAllowlist": true
+      }
+    },
+    {
+      "providerId": "minimax",
+      "displayName": "MiniMax",
+      "auth": {
+        "strategy": "apiKey",
+        "fields": [
+          {
+            "id": "apiKey",
+            "label": "API Key",
+            "type": "password",
+            "required": true
+          }
+        ],
+        "helpText": "Use the provider API key or your internal gateway key."
+      },
+      "discovery": {
+        "mode": "official-or-compatible",
+        "officialListEndpoint": "",
+        "supportsManualAllowlist": true
+      }
+    },
+    {
+      "providerId": "openrouter",
+      "displayName": "OpenRouter",
+      "auth": {
+        "strategy": "apiKey",
+        "fields": [
+          {
+            "id": "apiKey",
+            "label": "API Key",
+            "type": "password",
+            "required": true
+          }
+        ],
+        "helpText": "Use an OpenRouter API key. Models are routed IDs such as openai/gpt-5.4-pro."
+      },
+      "discovery": {
+        "mode": "gateway-catalog",
+        "officialListEndpoint": "https://openrouter.ai/api/v1/models",
+        "supportsManualAllowlist": true
+      }
+    },
+    {
+      "providerId": "vercel-ai-gateway",
+      "displayName": "Vercel AI Gateway",
+      "auth": {
+        "strategy": "apiKey",
+        "fields": [
+          {
+            "id": "apiKey",
+            "label": "Gateway Key",
+            "type": "password",
+            "required": true
+          }
+        ],
+        "helpText": "Use a Vercel AI Gateway key. Models are routed IDs such as alibaba/qwen-3-14b."
+      },
+      "discovery": {
+        "mode": "gateway-catalog",
+        "officialListEndpoint": "https://ai-gateway.vercel.sh/v1/models",
+        "supportsManualAllowlist": true
+      }
+    },
+    {
+      "providerId": "azure-openai",
+      "displayName": "Azure OpenAI",
+      "auth": {
+        "strategy": "endpoint-key-deployment",
+        "fields": [
+          {
+            "id": "endpoint",
+            "label": "Endpoint",
+            "type": "text",
+            "required": true,
+            "placeholder": "https://example.openai.azure.com/"
+          },
+          {
+            "id": "apiKey",
+            "label": "API Key",
+            "type": "password",
+            "required": true
+          },
+          {
+            "id": "deploymentName",
+            "label": "Deployment Name",
+            "type": "text",
+            "required": true
+          }
+        ],
+        "helpText": "Use Azure endpoint, key, and deployment name. Azure model discovery often needs a manual allowlist."
+      },
+      "discovery": {
+        "mode": "manual-or-compatible",
+        "officialListEndpoint": "",
+        "supportsManualAllowlist": true
+      }
+    },
+    {
+      "providerId": "openai-compatible",
+      "displayName": "OpenAI-Compatible",
+      "auth": {
+        "strategy": "baseUrl-apiKey",
+        "fields": [
+          {
+            "id": "baseUrl",
+            "label": "Base URL",
+            "type": "text",
+            "required": true,
+            "placeholder": "https://example.com/v1"
+          },
+          {
+            "id": "apiKey",
+            "label": "API Key",
+            "type": "password",
+            "required": false
+          }
+        ],
+        "helpText": "Use for custom gateways or self-hosted providers that follow the OpenAI API shape."
+      },
+      "discovery": {
+        "mode": "compatible-or-manual",
+        "officialListEndpoint": "",
+        "supportsManualAllowlist": true
+      }
+    }
+  ]
+}

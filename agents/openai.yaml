@@ -1,0 +1,4 @@
+interface:
+  display_name: "LLM Model Catalog Builder"
+  short_description: "Build provider-first LLM model catalogs."
+  default_prompt: "Use $llm-model-catalog-builder to design or implement a provider-first LLM model catalog with sync rules and a model picker flow."
