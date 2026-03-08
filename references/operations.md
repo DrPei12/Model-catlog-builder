@@ -17,6 +17,9 @@ Support these actions on day one:
 - rename a model
 - mark recommended
 - pin an alias to a runtime ID
+- connect a provider with encrypted credential storage
+- revalidate a stored connection
+- disconnect a provider and keep the audit trail
 - trigger manual refresh
 - inspect sync history
 
@@ -26,6 +29,8 @@ The starter runtime now includes:
 - full refresh runs
 - provider-scoped refresh runs
 - validation runs
+- encrypted provider connection records
+- audit events for connect, rotate, revalidate, and disconnect actions
 - per-provider runtime summaries with both refresh and validation state
 
 ## Alerts

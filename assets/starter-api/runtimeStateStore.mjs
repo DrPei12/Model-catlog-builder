@@ -2,10 +2,12 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const DEFAULT_STATE = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   updatedAt: null,
   refreshRuns: [],
   validationRuns: [],
+  auditEvents: [],
+  connections: {},
   providers: {},
 };
 
@@ -31,9 +33,25 @@ export async function createRuntimeStateStore(statePath, options = {}) {
         .filter((run) => !providerId || run.providerId === providerId)
         .slice(0, limit);
     },
+    getAuditEvents: async ({ providerId = null, limit = 50 } = {}) => {
+      const state = await loadState(resolvedPath);
+      return state.auditEvents
+        .filter((event) => !providerId || event.providerId === providerId)
+        .slice(0, limit);
+    },
     getProviderState: async (providerId) => {
       const state = await loadState(resolvedPath);
       return state.providers[providerId] || null;
+    },
+    getConnection: async (providerId) => {
+      const state = await loadState(resolvedPath);
+      return state.connections[providerId] || null;
+    },
+    listConnections: async () => {
+      const state = await loadState(resolvedPath);
+      return Object.values(state.connections).sort((left, right) =>
+        String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')),
+      );
     },
     recordRefreshRun: async (run) => {
       const state = await loadState(resolvedPath);
@@ -64,6 +82,28 @@ export async function createRuntimeStateStore(statePath, options = {}) {
       await saveState(resolvedPath, state);
       return nextRun;
     },
+    upsertConnection: async (record) => {
+      const state = await loadState(resolvedPath);
+      const existing = state.connections[record.providerId];
+      const nextRecord = normalizeConnectionRecord(record, existing);
+
+      state.connections[nextRecord.providerId] = nextRecord;
+      state.updatedAt = new Date().toISOString();
+      await saveState(resolvedPath, state);
+      return nextRecord;
+    },
+    deleteConnection: async (providerId) => {
+      const state = await loadState(resolvedPath);
+      const existing = state.connections[providerId] || null;
+      if (!existing) {
+        return null;
+      }
+
+      delete state.connections[providerId];
+      state.updatedAt = new Date().toISOString();
+      await saveState(resolvedPath, state);
+      return existing;
+    },
     recordValidationRun: async (result) => {
       const state = await loadState(resolvedPath);
       const nextRun = normalizeValidationRun(result);
@@ -78,6 +118,17 @@ export async function createRuntimeStateStore(statePath, options = {}) {
 
       await saveState(resolvedPath, state);
       return nextRun;
+    },
+    recordAuditEvent: async (event) => {
+      const state = await loadState(resolvedPath);
+      const nextEvent = normalizeAuditEvent(event);
+
+      state.auditEvents.unshift(nextEvent);
+      state.auditEvents = state.auditEvents.slice(0, maxRuns);
+      state.updatedAt = new Date().toISOString();
+
+      await saveState(resolvedPath, state);
+      return nextEvent;
     },
   };
 }
@@ -107,6 +158,8 @@ function mergeStateDefaults(state) {
     ...state,
     refreshRuns: Array.isArray(state.refreshRuns) ? state.refreshRuns : [],
     validationRuns: Array.isArray(state.validationRuns) ? state.validationRuns : [],
+    auditEvents: Array.isArray(state.auditEvents) ? state.auditEvents : [],
+    connections: state.connections && typeof state.connections === 'object' ? state.connections : {},
     providers: state.providers && typeof state.providers === 'object' ? state.providers : {},
   };
 }
@@ -165,6 +218,41 @@ function normalizeValidationRun(result) {
     errorMessage: result.errorMessage || null,
     status: result.status ?? null,
     details: result.details || null,
+  };
+}
+
+function normalizeConnectionRecord(record, existing = null) {
+  const now = new Date().toISOString();
+  return {
+    providerId: record.providerId,
+    status: record.status || 'connected',
+    credentialSummary: record.credentialSummary || {},
+    encryptedCredentials: record.encryptedCredentials,
+    keyVersion: record.keyVersion || record.encryptedCredentials?.keyVersion || null,
+    createdAt: existing?.createdAt || record.createdAt || now,
+    updatedAt: record.updatedAt || now,
+    lastConnectedAt: record.lastConnectedAt || now,
+    lastRotatedAt: record.lastRotatedAt || now,
+    lastValidatedAt: record.lastValidatedAt || existing?.lastValidatedAt || null,
+    lastValidationOk:
+      record.lastValidationOk === undefined ? existing?.lastValidationOk ?? null : Boolean(record.lastValidationOk),
+    lastValidationErrorCode: record.lastValidationErrorCode || null,
+    lastValidationErrorMessage: record.lastValidationErrorMessage || null,
+    lastValidationStatus: record.lastValidationStatus ?? null,
+    metadata: record.metadata || existing?.metadata || {},
+  };
+}
+
+function normalizeAuditEvent(event) {
+  return {
+    eventId: event.eventId || createId('audit'),
+    providerId: event.providerId || null,
+    action: event.action || 'unknown',
+    actorType: event.actorType || 'system',
+    actorId: event.actorId || null,
+    occurredAt: event.occurredAt || new Date().toISOString(),
+    ok: event.ok === undefined ? null : Boolean(event.ok),
+    details: event.details || null,
   };
 }
 

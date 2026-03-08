@@ -10,13 +10,20 @@ The bundled demo server implements this starter contract:
 - `GET /api/providers/:providerId/setup`
 - `GET /api/providers/:providerId/models`
 - `GET /api/providers/:providerId/runtime`
+- `GET /api/providers/:providerId/connection`
 - `GET /api/providers/:providerId/validation-runs`
+- `GET /api/providers/:providerId/audit-events`
 - `GET /api/catalog/meta`
 - `GET /api/operations/refresh-runs`
 - `GET /api/operations/validation-runs`
+- `GET /api/operations/connections`
+- `GET /api/operations/audit-events`
 - `POST /api/providers/:providerId/validate`
+- `POST /api/providers/:providerId/connect`
+- `POST /api/providers/:providerId/revalidate`
 - `POST /api/refresh`
 - `POST /api/providers/:providerId/refresh`
+- `DELETE /api/providers/:providerId/connection`
 
 ## Recommended endpoints or tools
 
@@ -116,6 +123,43 @@ Each model should include:
 - `isLatestStableRelease`
 - `pinnedTargetModelId`
 
+### `connectProvider(providerId, credentials)`
+
+Validate and persist provider credentials.
+
+Suggested fields:
+
+- `ok`
+- `providerId`
+- `validation`
+- `connection`
+- `auditEvent`
+
+Credentials should be encrypted before persistence. The response should never return plaintext secrets.
+
+### `revalidateProvider(providerId)`
+
+Load the stored credentials, validate them again, and update runtime plus connection state.
+
+Suggested fields:
+
+- `ok`
+- `providerId`
+- `validation`
+- `connection`
+- `auditEvent`
+
+### `disconnectProvider(providerId)`
+
+Delete the stored credentials and emit an audit event.
+
+Suggested fields:
+
+- `ok`
+- `providerId`
+- `connection`
+- `auditEvent`
+
 ### `refreshProviderModels(providerId)`
 
 Trigger a provider refresh and return a summary.
@@ -163,6 +207,27 @@ Suggested fields:
 - `lastValidationErrorMessage`
 - `lastValidationStrategy`
 
+### `getProviderConnection(providerId)`
+
+Return the saved connection state without exposing plaintext credentials.
+
+Suggested fields:
+
+- `providerId`
+- `status`
+- `credentialSummary`
+- `keyVersion`
+- `createdAt`
+- `updatedAt`
+- `lastConnectedAt`
+- `lastRotatedAt`
+- `lastValidatedAt`
+- `lastValidationOk`
+- `lastValidationErrorCode`
+- `lastValidationErrorMessage`
+- `lastValidationStatus`
+- `metadata`
+
 ### `listRefreshRuns()`
 
 Return recent refresh history for auditing and debugging.
@@ -194,6 +259,11 @@ Suggested fields:
 - `runtimeStore.preferredKind`
 - `runtimeStore.availablePaths`
 - `runtimeStore.fallbackReason`
+- `runtimeStore.supportsCredentialVault`
+- `credentialVault.algorithm`
+- `credentialVault.keyVersion`
+- `credentialVault.secretSource`
+- `credentialVault.usesDefaultSecret`
 
 ## UI guidance
 

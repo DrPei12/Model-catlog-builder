@@ -118,6 +118,9 @@ Expose a stable API surface for the frontend and agent layer:
 - `listProviders()`
 - `getProviderSetup(providerId)`
 - `validateProviderCredentials(providerId, credentials)`
+- `connectProvider(providerId, credentials)`
+- `revalidateProvider(providerId)`
+- `disconnectProvider(providerId)`
 - `listModels(providerId, filters)`
 - `refreshProviderModels(providerId)`
 
@@ -183,6 +186,14 @@ Copy this when you want a minimal Node service wrapper around the generated cata
 
 Copy this when you want a real credential validator for the production path. The current version supports `OpenAI`, `Anthropic`, `Google Gemini`, `OpenRouter`, `Vercel AI Gateway`, and `OpenAI-Compatible` endpoints, with explicit fallback messages for unsupported providers.
 
+### `assets/starter-api/credentialVault.mjs`
+
+Copy this when you need encrypted credential storage without adding another dependency. It uses AES-256-GCM and stores only masked summaries plus fingerprints in public state.
+
+### `assets/starter-api/providerConnectionService.mjs`
+
+Copy this when you want a product-facing connection layer on top of runtime persistence. It handles `connect`, `revalidate`, `disconnect`, connection inventory, and audit events while keeping plaintext credentials out of API responses.
+
 ### `assets/starter-api/catalogRuntimeService.mjs`
 
 Copy this when you want refresh orchestration and runtime state without wiring those concerns directly into your HTTP server. It supports full-catalog refresh, provider-scoped refresh, refresh logs, validation logs, and provider runtime summaries backed by a SQLite-first runtime store with JSON fallback.
@@ -201,7 +212,7 @@ Copy this when you need the JSON fallback store or want a fully inspectable stat
 
 ### `scripts/run_demo_server.mjs`
 
-Use this when you want a zero-dependency demo server. It now serves both product APIs and operational APIs, including refresh history, validation history, provider runtime state, and runtime-store metadata.
+Use this when you want a zero-dependency demo server. It now serves both product APIs and operational APIs, including refresh history, validation history, encrypted connection management, audit history, provider runtime state, and runtime-store metadata.
 
 ### `references/operations.md`
 

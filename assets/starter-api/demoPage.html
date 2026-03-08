@@ -289,8 +289,9 @@
           <h1>Choose provider first. Make model selection deterministic.</h1>
           <p>
             This starter shows the full flow: select a provider, inspect the auth
-            form, validate credentials, inspect normalized models, and review
-            refresh plus validation history from the runtime store.
+            form, validate credentials, store an encrypted connection, inspect
+            normalized models, and review refresh, validation, and audit history
+            from the runtime store.
           </p>
         </div>
         <div class="toolbar">
@@ -298,6 +299,8 @@
           <button id="metaButton">Show source status</button>
           <button id="historyButton">Show refresh history</button>
           <button id="validationHistoryButton">Show validation history</button>
+          <button id="connectionInventoryButton">Show connections</button>
+          <button id="auditHistoryButton">Show audit history</button>
         </div>
       </div>
 
@@ -318,11 +321,17 @@
               <div class="input-grid" id="authInputs"></div>
               <div class="toolbar">
                 <button id="validateButton">Validate credentials</button>
+                <button id="connectButton">Connect and save</button>
+                <button id="revalidateButton">Revalidate stored connection</button>
+                <button id="disconnectButton">Disconnect provider</button>
                 <button id="providerRefreshButton">Refresh selected provider</button>
                 <button id="providerValidationHistoryButton">Show provider validation history</button>
+                <button id="providerAuditButton">Show provider audit history</button>
               </div>
               <pre id="validationOutput">Validation results will appear here.</pre>
               <pre id="validationHistoryOutput">Validation history will appear here.</pre>
+              <pre id="connectionOutput">Connection state will appear here.</pre>
+              <pre id="auditOutput">Audit history will appear here.</pre>
               <pre id="runtimeOutput">Runtime provider state will appear here.</pre>
             </section>
 
@@ -380,6 +389,8 @@
       const modelRowsEl = document.getElementById('modelRows');
       const validationOutputEl = document.getElementById('validationOutput');
       const validationHistoryOutputEl = document.getElementById('validationHistoryOutput');
+      const connectionOutputEl = document.getElementById('connectionOutput');
+      const auditOutputEl = document.getElementById('auditOutput');
       const runtimeOutputEl = document.getElementById('runtimeOutput');
       const statusEl = document.getElementById('status');
       const groupSelectEl = document.getElementById('groupSelect');
@@ -390,9 +401,15 @@
       const metaButtonEl = document.getElementById('metaButton');
       const historyButtonEl = document.getElementById('historyButton');
       const validationHistoryButtonEl = document.getElementById('validationHistoryButton');
+      const connectionInventoryButtonEl = document.getElementById('connectionInventoryButton');
+      const auditHistoryButtonEl = document.getElementById('auditHistoryButton');
       const validateButtonEl = document.getElementById('validateButton');
+      const connectButtonEl = document.getElementById('connectButton');
+      const revalidateButtonEl = document.getElementById('revalidateButton');
+      const disconnectButtonEl = document.getElementById('disconnectButton');
       const providerRefreshButtonEl = document.getElementById('providerRefreshButton');
       const providerValidationHistoryButtonEl = document.getElementById('providerValidationHistoryButton');
+      const providerAuditButtonEl = document.getElementById('providerAuditButton');
 
       groupSelectEl.addEventListener('change', renderSelectedProviderModels);
       searchInputEl.addEventListener('input', debounce(renderSelectedProviderModels, 180));
@@ -402,9 +419,15 @@
       metaButtonEl.addEventListener('click', showMeta);
       historyButtonEl.addEventListener('click', showRefreshHistory);
       validationHistoryButtonEl.addEventListener('click', showValidationHistory);
+      connectionInventoryButtonEl.addEventListener('click', showConnectionInventory);
+      auditHistoryButtonEl.addEventListener('click', showAuditHistory);
       validateButtonEl.addEventListener('click', validateCredentials);
+      connectButtonEl.addEventListener('click', connectProvider);
+      revalidateButtonEl.addEventListener('click', revalidateProvider);
+      disconnectButtonEl.addEventListener('click', disconnectProvider);
       providerRefreshButtonEl.addEventListener('click', refreshSelectedProvider);
       providerValidationHistoryButtonEl.addEventListener('click', renderValidationHistory);
+      providerAuditButtonEl.addEventListener('click', renderAuditHistory);
 
       bootstrap();
 
@@ -492,8 +515,12 @@
 
         validationOutputEl.textContent = 'Validation results will appear here.';
         validationHistoryOutputEl.textContent = 'Validation history will appear here.';
+        connectionOutputEl.textContent = 'Connection state will appear here.';
+        auditOutputEl.textContent = 'Audit history will appear here.';
         await renderRuntimeState();
         await renderValidationHistory();
+        await renderConnectionState();
+        await renderAuditHistory();
 
         catalogStatsEl.innerHTML = '';
         const summary = [
@@ -614,6 +641,100 @@
         }
       }
 
+      async function connectProvider() {
+        if (!state.selectedProviderId) {
+          return;
+        }
+
+        const credentials = providerForms.get(state.selectedProviderId) || {};
+
+        try {
+          connectButtonEl.disabled = true;
+          const payload = await fetchJson(`/api/providers/${encodeURIComponent(state.selectedProviderId)}/connect`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              credentials,
+              actor: {
+                type: 'demo-user',
+                id: 'browser-ui',
+              },
+            }),
+          });
+
+          validationOutputEl.textContent = JSON.stringify(payload.validation || payload, null, 2);
+          connectionOutputEl.textContent = JSON.stringify(payload.connection || {}, null, 2);
+          await renderRuntimeState();
+          await renderValidationHistory();
+          await renderAuditHistory();
+          setStatus(payload.ok ? 'Connection saved.' : payload.errorMessage || 'Connect failed.', payload.ok ? '' : 'warn');
+        } finally {
+          connectButtonEl.disabled = false;
+        }
+      }
+
+      async function revalidateProvider() {
+        if (!state.selectedProviderId) {
+          return;
+        }
+
+        try {
+          revalidateButtonEl.disabled = true;
+          const payload = await fetchJson(`/api/providers/${encodeURIComponent(state.selectedProviderId)}/revalidate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              actor: {
+                type: 'demo-user',
+                id: 'browser-ui',
+              },
+            }),
+          });
+
+          validationOutputEl.textContent = JSON.stringify(payload.validation || payload, null, 2);
+          connectionOutputEl.textContent = JSON.stringify(payload.connection || {}, null, 2);
+          await renderRuntimeState();
+          await renderValidationHistory();
+          await renderAuditHistory();
+          setStatus(payload.ok ? 'Stored connection revalidated.' : payload.errorMessage || 'Revalidate failed.', payload.ok ? '' : 'warn');
+        } finally {
+          revalidateButtonEl.disabled = false;
+        }
+      }
+
+      async function disconnectProvider() {
+        if (!state.selectedProviderId) {
+          return;
+        }
+
+        try {
+          disconnectButtonEl.disabled = true;
+          const payload = await fetchJson(`/api/providers/${encodeURIComponent(state.selectedProviderId)}/connection`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              actor: {
+                type: 'demo-user',
+                id: 'browser-ui',
+              },
+            }),
+          });
+
+          connectionOutputEl.textContent = JSON.stringify(payload.connection || {}, null, 2);
+          await renderRuntimeState();
+          await renderAuditHistory();
+          setStatus(payload.ok ? 'Provider disconnected.' : payload.errorMessage || 'Disconnect failed.', payload.ok ? '' : 'warn');
+        } finally {
+          disconnectButtonEl.disabled = false;
+        }
+      }
+
       async function renderRuntimeState() {
         if (!state.selectedProviderId) {
           runtimeOutputEl.textContent = 'Runtime provider state will appear here.';
@@ -636,6 +757,28 @@
         validationHistoryOutputEl.textContent = JSON.stringify(payload.validationRuns || [], null, 2);
       }
 
+      async function renderConnectionState() {
+        if (!state.selectedProviderId) {
+          connectionOutputEl.textContent = 'Connection state will appear here.';
+          return;
+        }
+
+        const payload = await fetchJson(`/api/providers/${encodeURIComponent(state.selectedProviderId)}/connection`);
+        connectionOutputEl.textContent = JSON.stringify(payload.connection || {}, null, 2);
+      }
+
+      async function renderAuditHistory() {
+        if (!state.selectedProviderId) {
+          auditOutputEl.textContent = 'Audit history will appear here.';
+          return;
+        }
+
+        const payload = await fetchJson(
+          `/api/providers/${encodeURIComponent(state.selectedProviderId)}/audit-events?limit=10`
+        );
+        auditOutputEl.textContent = JSON.stringify(payload.auditEvents || [], null, 2);
+      }
+
       async function showMeta() {
         const payload = await fetchJson('/api/catalog/meta');
         alert(JSON.stringify(payload, null, 2));
@@ -648,6 +791,16 @@
 
       async function showValidationHistory() {
         const payload = await fetchJson('/api/operations/validation-runs?limit=20');
+        alert(JSON.stringify(payload, null, 2));
+      }
+
+      async function showConnectionInventory() {
+        const payload = await fetchJson('/api/operations/connections');
+        alert(JSON.stringify(payload, null, 2));
+      }
+
+      async function showAuditHistory() {
+        const payload = await fetchJson('/api/operations/audit-events?limit=20');
         alert(JSON.stringify(payload, null, 2));
       }
 

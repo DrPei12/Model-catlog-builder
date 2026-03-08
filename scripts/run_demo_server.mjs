@@ -11,6 +11,7 @@ import {
   listProviders,
 } from '../assets/starter-api/modelCatalogService.mjs';
 import { createCatalogRuntimeService } from '../assets/starter-api/catalogRuntimeService.mjs';
+import { createProviderConnectionService } from '../assets/starter-api/providerConnectionService.mjs';
 import { validateProviderCredentials } from '../assets/starter-api/validateProviderCredentials.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -21,6 +22,7 @@ const DEFAULT_CATALOG_PATH = path.resolve(process.env.CATALOG_PATH || path.join(
 const DEFAULT_JSON_STATE_PATH = path.resolve(process.env.RUNTIME_STATE_PATH || path.join(ROOT_DIR, 'output', 'runtime-state.json'));
 const DEFAULT_SQLITE_PATH = path.resolve(process.env.RUNTIME_SQLITE_PATH || path.join(ROOT_DIR, 'output', 'runtime-state.sqlite'));
 const DEFAULT_STORAGE_MODE = process.env.RUNTIME_STORAGE_MODE || 'auto';
+const DEFAULT_ENCRYPTION_SECRET = process.env.MODEL_CATALOG_SECRET || 'model-catlog-builder-dev-secret';
 const SYNC_SCRIPT_PATH = path.join(ROOT_DIR, 'scripts', 'sync_model_catalog.mjs');
 const DEMO_PAGE_PATH = path.join(ROOT_DIR, 'assets', 'starter-api', 'demoPage.html');
 
@@ -30,6 +32,7 @@ export async function startDemoServer(options = {}) {
   const jsonStatePath = path.resolve(options.jsonStatePath || options.statePath || DEFAULT_JSON_STATE_PATH);
   const sqlitePath = path.resolve(options.sqlitePath || DEFAULT_SQLITE_PATH);
   const storageMode = options.storageMode || DEFAULT_STORAGE_MODE;
+  const encryptionSecret = options.encryptionSecret || DEFAULT_ENCRYPTION_SECRET;
 
   const runtime = await createCatalogRuntimeService({
     rootDir: ROOT_DIR,
@@ -43,6 +46,17 @@ export async function startDemoServer(options = {}) {
   await runtime.ensureCatalog();
   let catalog = await runtime.loadCatalog();
   const runtimeStore = runtime.getPersistenceInfo();
+  const connectionService = createProviderConnectionService({
+    runtimeService: runtime,
+    encryptionSecret,
+    encryptionKeyVersion: options.encryptionKeyVersion || 'v1',
+    secretSource: options.encryptionSecret
+      ? 'option'
+      : process.env.MODEL_CATALOG_SECRET
+        ? 'env'
+        : 'default-dev-secret',
+    usesDefaultSecret: !options.encryptionSecret && !process.env.MODEL_CATALOG_SECRET,
+  });
 
   const server = http.createServer(async (request, response) => {
     try {
@@ -65,6 +79,7 @@ export async function startDemoServer(options = {}) {
           generatedAt: catalog?.generatedAt || null,
           sourceStatus: catalog?.sourceStatus || {},
           runtimeStore,
+          credentialVault: connectionService.getVaultInfo(),
         });
       }
 
@@ -108,6 +123,35 @@ export async function startDemoServer(options = {}) {
         });
       }
 
+      const providerConnectionMatch = url.pathname.match(/^\/api\/providers\/([^/]+)\/connection$/);
+      if (request.method === 'GET' && providerConnectionMatch) {
+        const providerId = decodeURIComponent(providerConnectionMatch[1]);
+        const providerSetup = getProviderSetup(catalog, providerId);
+        if (!providerSetup) {
+          return sendJson(response, 404, { error: 'provider_not_found' });
+        }
+        const connection = await connectionService.getConnection(providerId);
+        return sendJson(response, 200, {
+          providerId,
+          connection,
+        });
+      }
+
+      const providerAuditEventsMatch = url.pathname.match(/^\/api\/providers\/([^/]+)\/audit-events$/);
+      if (request.method === 'GET' && providerAuditEventsMatch) {
+        const providerId = decodeURIComponent(providerAuditEventsMatch[1]);
+        const providerSetup = getProviderSetup(catalog, providerId);
+        if (!providerSetup) {
+          return sendJson(response, 404, { error: 'provider_not_found' });
+        }
+        const limit = Number(url.searchParams.get('limit') || '20');
+        const auditEvents = await connectionService.getAuditEvents({ providerId, limit });
+        return sendJson(response, 200, {
+          providerId,
+          auditEvents,
+        });
+      }
+
       const providerValidationRunsMatch = url.pathname.match(/^\/api\/providers\/([^/]+)\/validation-runs$/);
       if (request.method === 'GET' && providerValidationRunsMatch) {
         const providerId = decodeURIComponent(providerValidationRunsMatch[1]);
@@ -134,6 +178,51 @@ export async function startDemoServer(options = {}) {
         const validationResult = await validateProviderCredentials(providerSetup, body?.credentials || {});
         const result = await runtime.recordValidationRun(validationResult);
         return sendJson(response, 200, result);
+      }
+
+      const providerConnectMatch = url.pathname.match(/^\/api\/providers\/([^/]+)\/connect$/);
+      if (request.method === 'POST' && providerConnectMatch) {
+        const providerId = decodeURIComponent(providerConnectMatch[1]);
+        const providerSetup = getProviderSetup(catalog, providerId);
+        if (!providerSetup) {
+          return sendJson(response, 404, { error: 'provider_not_found' });
+        }
+        const body = await readJsonBody(request);
+        const result = await connectionService.connectProvider(
+          providerSetup,
+          body?.credentials || {},
+          body?.actor || createDemoActor(request),
+        );
+        return sendJson(response, result.ok ? 200 : 400, result);
+      }
+
+      const providerRevalidateMatch = url.pathname.match(/^\/api\/providers\/([^/]+)\/revalidate$/);
+      if (request.method === 'POST' && providerRevalidateMatch) {
+        const providerId = decodeURIComponent(providerRevalidateMatch[1]);
+        const providerSetup = getProviderSetup(catalog, providerId);
+        if (!providerSetup) {
+          return sendJson(response, 404, { error: 'provider_not_found' });
+        }
+        const body = await readJsonBody(request);
+        const result = await connectionService.revalidateProvider(
+          providerSetup,
+          body?.actor || createDemoActor(request),
+        );
+        return sendJson(response, result.ok ? 200 : 400, result);
+      }
+
+      if (request.method === 'DELETE' && providerConnectionMatch) {
+        const providerId = decodeURIComponent(providerConnectionMatch[1]);
+        const providerSetup = getProviderSetup(catalog, providerId);
+        if (!providerSetup) {
+          return sendJson(response, 404, { error: 'provider_not_found' });
+        }
+        const body = await readJsonBody(request);
+        const result = await connectionService.disconnectProvider(
+          providerId,
+          body?.actor || createDemoActor(request),
+        );
+        return sendJson(response, result.ok ? 200 : 404, result);
       }
 
       const providerRefreshMatch = url.pathname.match(/^\/api\/providers\/([^/]+)\/refresh$/);
@@ -163,6 +252,18 @@ export async function startDemoServer(options = {}) {
         const limit = Number(url.searchParams.get('limit') || '20');
         const validationRuns = await runtime.getValidationRuns({ providerId, limit });
         return sendJson(response, 200, { validationRuns });
+      }
+
+      if (request.method === 'GET' && url.pathname === '/api/operations/connections') {
+        const connections = await connectionService.listConnections();
+        return sendJson(response, 200, { connections });
+      }
+
+      if (request.method === 'GET' && url.pathname === '/api/operations/audit-events') {
+        const providerId = url.searchParams.get('providerId') || null;
+        const limit = Number(url.searchParams.get('limit') || '20');
+        const auditEvents = await connectionService.getAuditEvents({ providerId, limit });
+        return sendJson(response, 200, { auditEvents });
       }
 
       if (request.method === 'POST' && url.pathname === '/api/refresh') {
@@ -198,6 +299,7 @@ export async function startDemoServer(options = {}) {
     jsonStatePath,
     sqlitePath,
     runtimeStore,
+    credentialVault: connectionService.getVaultInfo(),
     getCatalog: () => catalog,
   };
 }
@@ -265,4 +367,11 @@ async function readJsonBody(request) {
   }
 
   return JSON.parse(body);
+}
+
+function createDemoActor(request) {
+  return {
+    type: 'demo-user',
+    id: request.headers['x-forwarded-for'] || request.socket.remoteAddress || 'local-demo',
+  };
 }
