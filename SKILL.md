@@ -185,15 +185,23 @@ Copy this when you want a real credential validator for the production path. The
 
 ### `assets/starter-api/catalogRuntimeService.mjs`
 
-Copy this when you want refresh orchestration and runtime state without wiring those concerns directly into your HTTP server. It supports full-catalog refresh, provider-scoped refresh, refresh logs, and provider runtime summaries backed by a JSON state file.
+Copy this when you want refresh orchestration and runtime state without wiring those concerns directly into your HTTP server. It supports full-catalog refresh, provider-scoped refresh, refresh logs, validation logs, and provider runtime summaries backed by a SQLite-first runtime store with JSON fallback.
+
+### `assets/starter-api/runtimePersistenceStore.mjs`
+
+Copy this when you want a single runtime persistence entry point. The starter will prefer SQLite when the runtime supports `node:sqlite`, then fall back to the JSON store automatically if SQLite is unavailable.
+
+### `assets/starter-api/sqliteRuntimeStore.mjs`
+
+Copy this when you want a lightweight relational runtime store without bringing in an external database dependency. It persists refresh runs, validation runs, and per-provider runtime summaries.
 
 ### `assets/starter-api/runtimeStateStore.mjs`
 
-Copy this when you need a lightweight persistence layer for sync runs before moving to a real database. It stores recent refresh runs and per-provider operational summaries in a single JSON file.
+Copy this when you need the JSON fallback store or want a fully inspectable state file during local development. It stores recent refresh runs, validation runs, and per-provider operational summaries in one file.
 
 ### `scripts/run_demo_server.mjs`
 
-Use this when you want a zero-dependency demo server. It now serves both product APIs and operational APIs, including refresh history and provider runtime state.
+Use this when you want a zero-dependency demo server. It now serves both product APIs and operational APIs, including refresh history, validation history, provider runtime state, and runtime-store metadata.
 
 ### `references/operations.md`
 

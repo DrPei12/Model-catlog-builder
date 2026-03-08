@@ -4,14 +4,17 @@
 
 Expose a stable product-facing contract so the UI and agent layer never read raw upstream catalogs directly.
 
-The bundled demo server implements the read-only portion of this contract:
+The bundled demo server implements this starter contract:
 
 - `GET /api/providers`
 - `GET /api/providers/:providerId/setup`
 - `GET /api/providers/:providerId/models`
 - `GET /api/providers/:providerId/runtime`
+- `GET /api/providers/:providerId/validation-runs`
 - `GET /api/catalog/meta`
 - `GET /api/operations/refresh-runs`
+- `GET /api/operations/validation-runs`
+- `POST /api/providers/:providerId/validate`
 - `POST /api/refresh`
 - `POST /api/providers/:providerId/refresh`
 
@@ -53,6 +56,7 @@ Suggested fields:
 - `ok`
 - `providerId`
 - `checkedAt`
+- `validationId`
 - `errorCode`
 - `errorMessage`
 
@@ -151,6 +155,13 @@ Suggested fields:
 - `lastKnownLatestCount`
 - `lastKnownRecommendedCount`
 - `lastAvailabilitySource`
+- `lastValidationRunId`
+- `lastValidationOk`
+- `lastValidationAt`
+- `lastSuccessfulValidationAt`
+- `lastValidationErrorCode`
+- `lastValidationErrorMessage`
+- `lastValidationStrategy`
 
 ### `listRefreshRuns()`
 
@@ -160,6 +171,29 @@ Suggested filters:
 
 - `providerId`
 - `limit`
+
+### `listValidationRuns()`
+
+Return recent validation history for auditing and setup debugging.
+
+Suggested filters:
+
+- `providerId`
+- `limit`
+
+### `getCatalogMeta()`
+
+Return the current catalog and runtime-store metadata.
+
+Suggested fields:
+
+- `generatedAt`
+- `sourceStatus`
+- `runtimeStore.kind`
+- `runtimeStore.path`
+- `runtimeStore.preferredKind`
+- `runtimeStore.availablePaths`
+- `runtimeStore.fallbackReason`
 
 ## UI guidance
 

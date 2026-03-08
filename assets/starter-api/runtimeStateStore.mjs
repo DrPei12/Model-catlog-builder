@@ -5,6 +5,7 @@ const DEFAULT_STATE = {
   schemaVersion: 1,
   updatedAt: null,
   refreshRuns: [],
+  validationRuns: [],
   providers: {},
 };
 
@@ -15,12 +16,19 @@ export async function createRuntimeStateStore(statePath, options = {}) {
   await ensureStateFile(resolvedPath);
 
   return {
+    kind: 'json',
     path: resolvedPath,
     load: () => loadState(resolvedPath),
     getRefreshRuns: async ({ providerId = null, limit = 50 } = {}) => {
       const state = await loadState(resolvedPath);
       return state.refreshRuns
         .filter((run) => !providerId || run.providerId === providerId || run.scope === 'global')
+        .slice(0, limit);
+    },
+    getValidationRuns: async ({ providerId = null, limit = 50 } = {}) => {
+      const state = await loadState(resolvedPath);
+      return state.validationRuns
+        .filter((run) => !providerId || run.providerId === providerId)
         .slice(0, limit);
     },
     getProviderState: async (providerId) => {
@@ -56,6 +64,21 @@ export async function createRuntimeStateStore(statePath, options = {}) {
       await saveState(resolvedPath, state);
       return nextRun;
     },
+    recordValidationRun: async (result) => {
+      const state = await loadState(resolvedPath);
+      const nextRun = normalizeValidationRun(result);
+
+      state.validationRuns.unshift(nextRun);
+      state.validationRuns = state.validationRuns.slice(0, maxRuns);
+      state.updatedAt = new Date().toISOString();
+      state.providers[nextRun.providerId] = applyValidationState(
+        state.providers[nextRun.providerId],
+        nextRun,
+      );
+
+      await saveState(resolvedPath, state);
+      return nextRun;
+    },
   };
 }
 
@@ -83,6 +106,7 @@ function mergeStateDefaults(state) {
     ...DEFAULT_STATE,
     ...state,
     refreshRuns: Array.isArray(state.refreshRuns) ? state.refreshRuns : [],
+    validationRuns: Array.isArray(state.validationRuns) ? state.validationRuns : [],
     providers: state.providers && typeof state.providers === 'object' ? state.providers : {},
   };
 }
@@ -131,6 +155,40 @@ function applyProviderRefreshState(existingState = {}, run) {
   return nextState;
 }
 
+function normalizeValidationRun(result) {
+  return {
+    validationId: result.validationId || createId('validation'),
+    providerId: result.providerId,
+    checkedAt: result.checkedAt || new Date().toISOString(),
+    ok: Boolean(result.ok),
+    errorCode: result.errorCode || null,
+    errorMessage: result.errorMessage || null,
+    status: result.status ?? null,
+    details: result.details || null,
+  };
+}
+
+function applyValidationState(existingState = {}, validationRun) {
+  return {
+    ...existingState,
+    providerId: validationRun.providerId,
+    lastValidationRunId: validationRun.validationId,
+    lastValidationOk: validationRun.ok,
+    lastValidationAt: validationRun.checkedAt,
+    lastValidationErrorCode: validationRun.ok ? null : validationRun.errorCode,
+    lastValidationErrorMessage: validationRun.ok ? null : validationRun.errorMessage,
+    lastValidationStrategy: validationRun.details?.strategy || null,
+    lastValidationStatus: validationRun.status ?? null,
+    lastSuccessfulValidationAt: validationRun.ok
+      ? validationRun.checkedAt
+      : existingState?.lastSuccessfulValidationAt || null,
+  };
+}
+
 function createRunId() {
-  return `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return createId('run');
+}
+
+function createId(prefix) {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }

@@ -7,15 +7,15 @@
     <style>
       :root {
         color-scheme: light;
-        --bg: #f6f4ee;
-        --panel: #fffdf7;
-        --line: #d8d2c1;
-        --text: #1b1a17;
-        --muted: #6b6558;
-        --accent: #18654b;
-        --accent-soft: #e0f0e9;
-        --warning: #9f6b00;
-        --danger: #b8422e;
+        --bg: #f3efe5;
+        --panel: rgba(255, 253, 247, 0.92);
+        --line: #d7cfbf;
+        --text: #1b1915;
+        --muted: #6a655a;
+        --accent: #19634d;
+        --accent-soft: #deefe8;
+        --warn: #9a6900;
+        --danger: #b8432c;
       }
 
       * {
@@ -25,29 +25,35 @@
       body {
         margin: 0;
         font-family: "Segoe UI", "Helvetica Neue", sans-serif;
-        background:
-          radial-gradient(circle at top left, rgba(24, 101, 75, 0.12), transparent 28%),
-          linear-gradient(180deg, #fbfaf6 0%, var(--bg) 100%);
         color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(25, 99, 77, 0.12), transparent 30%),
+          linear-gradient(180deg, #faf8f2 0%, var(--bg) 100%);
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
       }
 
       .shell {
-        max-width: 1380px;
+        max-width: 1440px;
         margin: 0 auto;
-        padding: 32px 24px 48px;
+        padding: 28px 24px 40px;
       }
 
       .hero {
         display: flex;
-        gap: 16px;
         justify-content: space-between;
+        gap: 18px;
         align-items: flex-start;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
       }
 
       .hero h1 {
         margin: 0 0 10px;
-        font-size: clamp(2rem, 3vw, 3.25rem);
+        font-size: clamp(2rem, 3vw, 3.2rem);
         line-height: 1;
         letter-spacing: -0.04em;
       }
@@ -61,35 +67,42 @@
 
       .toolbar {
         display: flex;
-        gap: 12px;
+        gap: 10px;
         flex-wrap: wrap;
-        align-items: center;
-      }
-
-      button,
-      input,
-      select {
-        font: inherit;
       }
 
       button {
         border: 1px solid var(--line);
-        background: var(--panel);
+        background: #fffdf8;
         color: var(--text);
-        padding: 10px 14px;
         border-radius: 999px;
+        padding: 10px 14px;
         cursor: pointer;
       }
 
       button.primary {
         background: var(--accent);
-        border-color: var(--accent);
         color: white;
+        border-color: var(--accent);
       }
 
       button:disabled {
         opacity: 0.6;
         cursor: wait;
+      }
+
+      .status {
+        min-height: 24px;
+        margin-bottom: 14px;
+        color: var(--muted);
+      }
+
+      .status.warn {
+        color: var(--warn);
+      }
+
+      .status.error {
+        color: var(--danger);
       }
 
       .layout {
@@ -99,11 +112,11 @@
       }
 
       .panel {
-        background: rgba(255, 253, 247, 0.92);
-        border: 1px solid rgba(216, 210, 193, 0.9);
+        background: var(--panel);
+        border: 1px solid rgba(215, 207, 191, 0.95);
         border-radius: 24px;
         padding: 18px;
-        box-shadow: 0 18px 40px rgba(33, 28, 18, 0.06);
+        box-shadow: 0 16px 36px rgba(39, 33, 24, 0.07);
         backdrop-filter: blur(12px);
       }
 
@@ -118,18 +131,16 @@
       }
 
       .provider-card {
-        border: 1px solid var(--line);
+        text-align: left;
         border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.74);
         padding: 14px;
-        background: rgba(255, 255, 255, 0.7);
-        cursor: pointer;
-        transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
       }
 
       .provider-card.active {
         border-color: var(--accent);
         background: var(--accent-soft);
-        transform: translateY(-1px);
       }
 
       .provider-card strong {
@@ -137,72 +148,36 @@
         margin-bottom: 4px;
       }
 
-      .provider-meta,
-      .muted {
+      .muted,
+      .provider-meta {
         color: var(--muted);
         font-size: 0.93rem;
       }
 
-      .main-top {
-        display: flex;
+      .top-grid {
+        display: grid;
+        grid-template-columns: minmax(320px, 1.2fr) minmax(260px, 0.8fr);
         gap: 20px;
-        align-items: stretch;
       }
 
-      .main-top > .panel {
-        flex: 1;
-      }
-
-      .field-list,
-      .stat-list {
+      .chips,
+      .stats {
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
       }
 
-      .input-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 12px;
-        margin-top: 14px;
-      }
-
-      .field,
-      .badge,
-      .stat {
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        padding: 6px 10px;
-        background: #fff;
-        font-size: 0.9rem;
-      }
-
-      .field {
-        background: rgba(255, 255, 255, 0.82);
-      }
-
-      .input-card {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .input-card label {
-        font-size: 0.92rem;
-        color: var(--muted);
-      }
-
-      .input-card input {
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        padding: 12px 14px;
-        background: white;
-      }
-
+      .chip,
+      .stat,
       .badge {
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 10px;
+        background: white;
+        font-size: 0.9rem;
       }
 
       .badge.latest {
@@ -211,13 +186,40 @@
       }
 
       .badge.preview {
-        background: #fff4db;
-        border-color: #f0cd7a;
+        background: #fff3d8;
+        border-color: #e7c879;
       }
 
       .badge.deprecated {
-        background: #fde8e2;
-        border-color: #e8b4a8;
+        background: #fde7e1;
+        border-color: #e1b3a7;
+      }
+
+      .input-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin: 14px 0;
+      }
+
+      .field-card {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .field-card label {
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .field-card input,
+      .controls input,
+      .controls select {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: white;
+        padding: 12px 14px;
       }
 
       .controls {
@@ -225,15 +227,7 @@
         gap: 12px;
         flex-wrap: wrap;
         align-items: center;
-        margin: 18px 0;
-      }
-
-      .controls input,
-      .controls select {
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        padding: 10px 14px;
-        background: white;
+        margin-bottom: 16px;
       }
 
       .toggle {
@@ -253,33 +247,20 @@
         text-align: left;
         vertical-align: top;
         padding: 12px 10px;
-        border-bottom: 1px solid rgba(216, 210, 193, 0.8);
+        border-bottom: 1px solid rgba(215, 207, 191, 0.85);
       }
 
       th {
         color: var(--muted);
-        font-weight: 600;
         font-size: 0.92rem;
+        font-weight: 600;
       }
 
-      td code {
-        font-size: 0.9rem;
-        background: #f4f1e8;
+      code {
+        display: inline-block;
+        background: #f3efe5;
         border-radius: 6px;
         padding: 2px 6px;
-      }
-
-      .status {
-        min-height: 24px;
-        color: var(--muted);
-      }
-
-      .status.error {
-        color: var(--danger);
-      }
-
-      .status.warn {
-        color: var(--warning);
       }
 
       pre {
@@ -287,18 +268,15 @@
         padding: 14px;
         border-radius: 16px;
         border: 1px solid var(--line);
-        background: #f8f6ef;
+        background: #f8f4ea;
         overflow: auto;
         font-size: 0.9rem;
       }
 
-      @media (max-width: 1100px) {
-        .layout {
+      @media (max-width: 1120px) {
+        .layout,
+        .top-grid {
           grid-template-columns: 1fr;
-        }
-
-        .main-top {
-          flex-direction: column;
         }
       }
     </style>
@@ -308,17 +286,18 @@
       <div class="hero">
         <div>
           <p class="muted">Provider-first LLM catalog demo</p>
-          <h1>Choose provider first. Everything else becomes deterministic.</h1>
+          <h1>Choose provider first. Make model selection deterministic.</h1>
           <p>
-            This demo now shows both the product flow and the operational flow:
-            choose a provider, inspect its auth shape, validate credentials, then
-            query or refresh the normalized model catalog while recording sync history.
+            This starter shows the full flow: select a provider, inspect the auth
+            form, validate credentials, inspect normalized models, and review
+            refresh plus validation history from the runtime store.
           </p>
         </div>
         <div class="toolbar">
           <button class="primary" id="refreshButton">Refresh catalog</button>
           <button id="metaButton">Show source status</button>
           <button id="historyButton">Show refresh history</button>
+          <button id="validationHistoryButton">Show validation history</button>
         </div>
       </div>
 
@@ -331,23 +310,25 @@
         </aside>
 
         <main>
-          <div class="main-top">
+          <div class="top-grid">
             <section class="panel">
               <h2 id="providerTitle">Select a provider</h2>
               <p class="muted" id="providerSummary">The setup form will appear here.</p>
-              <div class="field-list" id="authFields"></div>
+              <div class="chips" id="authFields"></div>
               <div class="input-grid" id="authInputs"></div>
-              <div class="toolbar" style="margin-top: 14px;">
+              <div class="toolbar">
                 <button id="validateButton">Validate credentials</button>
                 <button id="providerRefreshButton">Refresh selected provider</button>
+                <button id="providerValidationHistoryButton">Show provider validation history</button>
               </div>
               <pre id="validationOutput">Validation results will appear here.</pre>
+              <pre id="validationHistoryOutput">Validation history will appear here.</pre>
               <pre id="runtimeOutput">Runtime provider state will appear here.</pre>
             </section>
 
             <section class="panel">
               <h2>Catalog summary</h2>
-              <div class="stat-list" id="catalogStats"></div>
+              <div class="stats" id="catalogStats"></div>
               <p class="muted" id="availabilityText">Pick a provider to inspect availability confidence.</p>
             </section>
           </div>
@@ -387,6 +368,8 @@
         selectedProviderId: null,
       };
 
+      const providerForms = new Map();
+
       const providerListEl = document.getElementById('providerList');
       const providerTitleEl = document.getElementById('providerTitle');
       const providerSummaryEl = document.getElementById('providerSummary');
@@ -396,6 +379,7 @@
       const availabilityTextEl = document.getElementById('availabilityText');
       const modelRowsEl = document.getElementById('modelRows');
       const validationOutputEl = document.getElementById('validationOutput');
+      const validationHistoryOutputEl = document.getElementById('validationHistoryOutput');
       const runtimeOutputEl = document.getElementById('runtimeOutput');
       const statusEl = document.getElementById('status');
       const groupSelectEl = document.getElementById('groupSelect');
@@ -405,10 +389,10 @@
       const refreshButtonEl = document.getElementById('refreshButton');
       const metaButtonEl = document.getElementById('metaButton');
       const historyButtonEl = document.getElementById('historyButton');
+      const validationHistoryButtonEl = document.getElementById('validationHistoryButton');
       const validateButtonEl = document.getElementById('validateButton');
       const providerRefreshButtonEl = document.getElementById('providerRefreshButton');
-
-      const providerForms = new Map();
+      const providerValidationHistoryButtonEl = document.getElementById('providerValidationHistoryButton');
 
       groupSelectEl.addEventListener('change', renderSelectedProviderModels);
       searchInputEl.addEventListener('input', debounce(renderSelectedProviderModels, 180));
@@ -417,8 +401,10 @@
       refreshButtonEl.addEventListener('click', refreshCatalog);
       metaButtonEl.addEventListener('click', showMeta);
       historyButtonEl.addEventListener('click', showRefreshHistory);
+      validationHistoryButtonEl.addEventListener('click', showValidationHistory);
       validateButtonEl.addEventListener('click', validateCredentials);
       providerRefreshButtonEl.addEventListener('click', refreshSelectedProvider);
+      providerValidationHistoryButtonEl.addEventListener('click', renderValidationHistory);
 
       bootstrap();
 
@@ -428,7 +414,7 @@
         state.providers = payload.providers || [];
         renderProviderList();
 
-        if (state.providers.length === 0) {
+        if (!state.providers.length) {
           setStatus('No providers found in the current catalog.', 'warn');
           return;
         }
@@ -443,13 +429,14 @@
 
       function renderProviderList() {
         providerListEl.innerHTML = '';
+
         for (const provider of state.providers) {
           const button = document.createElement('button');
           button.className = `provider-card${provider.providerId === state.selectedProviderId ? ' active' : ''}`;
           button.innerHTML = `
             <strong>${escapeHtml(provider.displayName)}</strong>
             <div class="provider-meta">${escapeHtml(provider.providerId)}</div>
-            <div class="provider-meta">${provider.collections.latest} latest · ${provider.collections.recommended} curated</div>
+            <div class="provider-meta">${provider.collections.latest} latest / ${provider.collections.recommended} curated</div>
           `;
           button.addEventListener('click', () => {
             void selectProvider(provider.providerId);
@@ -468,21 +455,21 @@
         }
 
         setStatus(`Loading ${provider.displayName}...`);
-
         const setup = await fetchJson(`/api/providers/${encodeURIComponent(providerId)}/setup`);
+
         providerTitleEl.textContent = setup.displayName;
         providerSummaryEl.textContent = setup.auth?.helpText || 'No setup guidance available yet.';
         authFieldsEl.innerHTML = '';
         authInputsEl.innerHTML = '';
 
         for (const field of setup.auth?.fields || []) {
-          const element = document.createElement('span');
-          element.className = 'field';
-          element.textContent = `${field.label} · ${field.type}${field.required ? ' · required' : ''}`;
-          authFieldsEl.appendChild(element);
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.textContent = `${field.label} / ${field.type}${field.required ? ' / required' : ''}`;
+          authFieldsEl.appendChild(chip);
 
-          const wrapper = document.createElement('div');
-          wrapper.className = 'input-card';
+          const card = document.createElement('div');
+          card.className = 'field-card';
 
           const label = document.createElement('label');
           label.textContent = field.label;
@@ -499,12 +486,14 @@
             providerForms.set(providerId, current);
           });
 
-          wrapper.append(label, input);
-          authInputsEl.appendChild(wrapper);
+          card.append(label, input);
+          authInputsEl.appendChild(card);
         }
 
         validationOutputEl.textContent = 'Validation results will appear here.';
+        validationHistoryOutputEl.textContent = 'Validation history will appear here.';
         await renderRuntimeState();
+        await renderValidationHistory();
 
         catalogStatsEl.innerHTML = '';
         const summary = [
@@ -542,9 +531,10 @@
         const payload = await fetchJson(
           `/api/providers/${encodeURIComponent(state.selectedProviderId)}/models?${params.toString()}`
         );
+
         modelRowsEl.innerHTML = '';
 
-        if (!payload.models || payload.models.length === 0) {
+        if (!payload.models || !payload.models.length) {
           modelRowsEl.innerHTML = '<tr><td colspan="5" class="muted">No models matched the current filters.</td></tr>';
           setStatus('No models matched the current filters.', 'warn');
           return;
@@ -559,7 +549,7 @@
             </td>
             <td>${renderStage(model)}</td>
             <td>${renderCapabilityBadges(model.capabilities || [])}</td>
-            <td>${model.contextWindow ? `${Intl.NumberFormat().format(model.contextWindow)} tokens` : '—'}</td>
+            <td>${model.contextWindow ? `${Intl.NumberFormat().format(model.contextWindow)} tokens` : '-'}</td>
             <td>${escapeHtml(model.availabilityConfidence || 'unknown')}</td>
           `;
           modelRowsEl.appendChild(row);
@@ -585,29 +575,17 @@
           return;
         }
 
-        const providerId = state.selectedProviderId;
-
         try {
           providerRefreshButtonEl.disabled = true;
-          setStatus(`Refreshing ${providerId}...`);
-          await fetchJson(`/api/providers/${encodeURIComponent(providerId)}/refresh`, {
+          setStatus(`Refreshing ${state.selectedProviderId}...`);
+          await fetchJson(`/api/providers/${encodeURIComponent(state.selectedProviderId)}/refresh`, {
             method: 'POST',
           });
-          await bootstrap(providerId);
-          setStatus(`Provider ${providerId} refreshed.`);
+          await bootstrap(state.selectedProviderId);
+          setStatus(`Provider ${state.selectedProviderId} refreshed.`);
         } finally {
           providerRefreshButtonEl.disabled = false;
         }
-      }
-
-      async function showMeta() {
-        const payload = await fetchJson('/api/catalog/meta');
-        alert(JSON.stringify(payload, null, 2));
-      }
-
-      async function showRefreshHistory() {
-        const payload = await fetchJson('/api/operations/refresh-runs?limit=20');
-        alert(JSON.stringify(payload, null, 2));
       }
 
       async function validateCredentials() {
@@ -616,9 +594,9 @@
         }
 
         const credentials = providerForms.get(state.selectedProviderId) || {};
-        validateButtonEl.disabled = true;
 
         try {
+          validateButtonEl.disabled = true;
           const payload = await fetchJson(`/api/providers/${encodeURIComponent(state.selectedProviderId)}/validate`, {
             method: 'POST',
             headers: {
@@ -628,6 +606,8 @@
           });
 
           validationOutputEl.textContent = JSON.stringify(payload, null, 2);
+          await renderRuntimeState();
+          await renderValidationHistory();
           setStatus(payload.ok ? 'Credentials validated.' : payload.errorMessage || 'Validation failed.', payload.ok ? '' : 'warn');
         } finally {
           validateButtonEl.disabled = false;
@@ -644,12 +624,41 @@
         runtimeOutputEl.textContent = JSON.stringify(payload.runtime || {}, null, 2);
       }
 
+      async function renderValidationHistory() {
+        if (!state.selectedProviderId) {
+          validationHistoryOutputEl.textContent = 'Validation history will appear here.';
+          return;
+        }
+
+        const payload = await fetchJson(
+          `/api/providers/${encodeURIComponent(state.selectedProviderId)}/validation-runs?limit=10`
+        );
+        validationHistoryOutputEl.textContent = JSON.stringify(payload.validationRuns || [], null, 2);
+      }
+
+      async function showMeta() {
+        const payload = await fetchJson('/api/catalog/meta');
+        alert(JSON.stringify(payload, null, 2));
+      }
+
+      async function showRefreshHistory() {
+        const payload = await fetchJson('/api/operations/refresh-runs?limit=20');
+        alert(JSON.stringify(payload, null, 2));
+      }
+
+      async function showValidationHistory() {
+        const payload = await fetchJson('/api/operations/validation-runs?limit=20');
+        alert(JSON.stringify(payload, null, 2));
+      }
+
       async function fetchJson(url, options = {}) {
         const response = await fetch(url, options);
         const payload = await response.json();
+
         if (!response.ok) {
           throw new Error(payload.message || payload.error || `Request failed: ${response.status}`);
         }
+
         return payload;
       }
 
@@ -665,8 +674,9 @@
 
       function renderCapabilityBadges(capabilities) {
         if (!capabilities.length) {
-          return '<span class="muted">—</span>';
+          return '<span class="muted">-</span>';
         }
+
         return capabilities
           .map((capability) => `<span class="badge">${escapeHtml(capability)}</span>`)
           .join(' ');

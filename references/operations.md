@@ -22,9 +22,11 @@ Support these actions on day one:
 
 The starter runtime now includes:
 
+- SQLite-first runtime persistence with JSON fallback
 - full refresh runs
 - provider-scoped refresh runs
-- per-provider runtime summaries in a JSON state file
+- validation runs
+- per-provider runtime summaries with both refresh and validation state
 
 ## Alerts
 

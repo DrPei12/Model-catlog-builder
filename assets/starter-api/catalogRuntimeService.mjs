@@ -3,21 +3,36 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 import { loadCatalog } from './modelCatalogService.mjs';
-import { createRuntimeStateStore } from './runtimeStateStore.mjs';
+import { createRuntimePersistenceStore } from './runtimePersistenceStore.mjs';
 
 export async function createCatalogRuntimeService(options) {
   const rootDir = path.resolve(options.rootDir);
   const catalogPath = path.resolve(options.catalogPath);
-  const statePath = path.resolve(options.statePath);
   const syncScriptPath = path.resolve(options.syncScriptPath);
 
-  const stateStore = await createRuntimeStateStore(statePath, options.stateOptions);
+  const persistenceStore = await createRuntimePersistenceStore({
+    storageMode: options.storageMode,
+    sqlitePath: options.sqlitePath,
+    jsonStatePath: options.jsonStatePath || options.statePath,
+    allowFallback: options.allowFallback,
+    stateOptions: options.stateOptions,
+  });
 
   return {
     ensureCatalog: () => ensureCatalog(catalogPath, syncScriptPath, rootDir),
     loadCatalog: () => loadCatalog(catalogPath),
-    getRefreshRuns: (query) => stateStore.getRefreshRuns(query),
-    getProviderState: (providerId) => stateStore.getProviderState(providerId),
+    getRefreshRuns: (query) => persistenceStore.getRefreshRuns(query),
+    getValidationRuns: (query) => persistenceStore.getValidationRuns(query),
+    getProviderState: (providerId) => persistenceStore.getProviderState(providerId),
+    recordValidationRun: (result) => persistenceStore.recordValidationRun(result),
+    getPersistenceInfo: () => ({
+      kind: persistenceStore.kind,
+      path: persistenceStore.path,
+      preferredKind: persistenceStore.preferredKind || persistenceStore.kind,
+      availablePaths: persistenceStore.availablePaths || null,
+      fallbackReason: persistenceStore.fallbackReason || null,
+    }),
+    close: () => persistenceStore.close?.(),
     refreshAllProviders: async () => {
       const startedAt = new Date().toISOString();
 
@@ -29,7 +44,7 @@ export async function createCatalogRuntimeService(options) {
         });
 
         const catalog = await loadCatalog(catalogPath);
-        const run = await stateStore.recordRefreshRun({
+        const run = await persistenceStore.recordRefreshRun({
           scope: 'global',
           status: 'success',
           startedAt,
@@ -45,7 +60,7 @@ export async function createCatalogRuntimeService(options) {
           providerCount: (catalog.providers || []).length,
         };
       } catch (error) {
-        const run = await stateStore.recordRefreshRun({
+        const run = await persistenceStore.recordRefreshRun({
           scope: 'global',
           status: 'error',
           startedAt,
@@ -83,7 +98,7 @@ export async function createCatalogRuntimeService(options) {
         const mergedCatalog = mergeScopedProviderIntoCatalog(currentCatalog, refreshedProvider, scopedCatalog.sourceStatus);
         await fs.writeFile(catalogPath, JSON.stringify(mergedCatalog, null, 2) + '\n', 'utf8');
 
-        const run = await stateStore.recordRefreshRun({
+        const run = await persistenceStore.recordRefreshRun({
           scope: 'provider',
           providerId,
           status: 'success',
@@ -99,7 +114,7 @@ export async function createCatalogRuntimeService(options) {
           ...run,
         };
       } catch (error) {
-        const run = await stateStore.recordRefreshRun({
+        const run = await persistenceStore.recordRefreshRun({
           scope: 'provider',
           providerId,
           status: 'error',
