@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Model Catalog Builder Demo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f4ee;
+        --panel: #fffdf7;
+        --line: #d8d2c1;
+        --text: #1b1a17;
+        --muted: #6b6558;
+        --accent: #18654b;
+        --accent-soft: #e0f0e9;
+        --warning: #9f6b00;
+        --danger: #b8422e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(24, 101, 75, 0.12), transparent 28%),
+          linear-gradient(180deg, #fbfaf6 0%, var(--bg) 100%);
+        color: var(--text);
+      }
+
+      .shell {
+        max-width: 1380px;
+        margin: 0 auto;
+        padding: 32px 24px 48px;
+      }
+
+      .hero {
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 24px;
+      }
+
+      .hero h1 {
+        margin: 0 0 10px;
+        font-size: clamp(2rem, 3vw, 3.25rem);
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+
+      .hero p {
+        margin: 0;
+        max-width: 760px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+        padding: 10px 14px;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 20px;
+      }
+
+      .panel {
+        background: rgba(255, 253, 247, 0.92);
+        border: 1px solid rgba(216, 210, 193, 0.9);
+        border-radius: 24px;
+        padding: 18px;
+        box-shadow: 0 18px 40px rgba(33, 28, 18, 0.06);
+        backdrop-filter: blur(12px);
+      }
+
+      .panel h2,
+      .panel h3 {
+        margin: 0 0 12px;
+      }
+
+      .provider-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .provider-card {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.7);
+        cursor: pointer;
+        transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+      }
+
+      .provider-card.active {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        transform: translateY(-1px);
+      }
+
+      .provider-card strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .provider-meta,
+      .muted {
+        color: var(--muted);
+        font-size: 0.93rem;
+      }
+
+      .main-top {
+        display: flex;
+        gap: 20px;
+        align-items: stretch;
+      }
+
+      .main-top > .panel {
+        flex: 1;
+      }
+
+      .field-list,
+      .badge-list,
+      .stat-list {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .field,
+      .badge,
+      .stat {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 10px;
+        background: #fff;
+        font-size: 0.9rem;
+      }
+
+      .field {
+        background: rgba(255, 255, 255, 0.82);
+      }
+
+      .badge.latest {
+        background: #edf5ff;
+        border-color: #b8d2f5;
+      }
+
+      .badge.preview {
+        background: #fff4db;
+        border-color: #f0cd7a;
+      }
+
+      .badge.deprecated {
+        background: #fde8e2;
+        border-color: #e8b4a8;
+      }
+
+      .controls {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin: 18px 0;
+      }
+
+      .controls input,
+      .controls select {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 10px 14px;
+        background: white;
+      }
+
+      .toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 12px 10px;
+        border-bottom: 1px solid rgba(216, 210, 193, 0.8);
+      }
+
+      th {
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 0.92rem;
+      }
+
+      td code {
+        font-size: 0.9rem;
+        background: #f4f1e8;
+        border-radius: 6px;
+        padding: 2px 6px;
+      }
+
+      .status {
+        min-height: 24px;
+        color: var(--muted);
+      }
+
+      .status.error {
+        color: var(--danger);
+      }
+
+      .status.warn {
+        color: var(--warning);
+      }
+
+      @media (max-width: 1100px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .main-top {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="hero">
+        <div>
+          <p class="muted">Provider-first LLM catalog demo</p>
+          <h1>Choose provider first. Everything else becomes deterministic.</h1>
+          <p>
+            This demo exposes the exact flow the skill is designed to standardize:
+            pick a provider, inspect its auth shape, then query a normalized model catalog
+            grouped by recommended, latest, or all.
+          </p>
+        </div>
+        <div class="toolbar">
+          <button class="primary" id="refreshButton">Refresh catalog</button>
+          <button id="metaButton">Show source status</button>
+        </div>
+      </div>
+
+      <div class="status" id="status"></div>
+
+      <div class="layout">
+        <aside class="panel">
+          <h2>Providers</h2>
+          <div class="provider-list" id="providerList"></div>
+        </aside>
+
+        <main>
+          <div class="main-top">
+            <section class="panel">
+              <h2 id="providerTitle">Select a provider</h2>
+              <p class="muted" id="providerSummary">The setup form will appear here.</p>
+              <div class="field-list" id="authFields"></div>
+            </section>
+
+            <section class="panel">
+              <h2>Catalog summary</h2>
+              <div class="stat-list" id="catalogStats"></div>
+              <p class="muted" id="availabilityText">Pick a provider to inspect availability confidence.</p>
+            </section>
+          </div>
+
+          <section class="panel" style="margin-top: 20px;">
+            <div class="controls">
+              <select id="groupSelect">
+                <option value="recommended">Recommended</option>
+                <option value="latest">Latest</option>
+                <option value="all" selected>All</option>
+              </select>
+              <input id="searchInput" type="search" placeholder="Search model name or ID">
+              <label class="toggle"><input id="previewToggle" type="checkbox"> Include preview</label>
+              <label class="toggle"><input id="deprecatedToggle" type="checkbox"> Include deprecated</label>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>Stage</th>
+                  <th>Capabilities</th>
+                  <th>Context</th>
+                  <th>Availability</th>
+                </tr>
+              </thead>
+              <tbody id="modelRows"></tbody>
+            </table>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      const state = {
+        providers: [],
+        selectedProviderId: null,
+      };
+
+      const providerListEl = document.getElementById('providerList');
+      const providerTitleEl = document.getElementById('providerTitle');
+      const providerSummaryEl = document.getElementById('providerSummary');
+      const authFieldsEl = document.getElementById('authFields');
+      const catalogStatsEl = document.getElementById('catalogStats');
+      const availabilityTextEl = document.getElementById('availabilityText');
+      const modelRowsEl = document.getElementById('modelRows');
+      const statusEl = document.getElementById('status');
+      const groupSelectEl = document.getElementById('groupSelect');
+      const searchInputEl = document.getElementById('searchInput');
+      const previewToggleEl = document.getElementById('previewToggle');
+      const deprecatedToggleEl = document.getElementById('deprecatedToggle');
+      const refreshButtonEl = document.getElementById('refreshButton');
+      const metaButtonEl = document.getElementById('metaButton');
+
+      groupSelectEl.addEventListener('change', renderSelectedProviderModels);
+      searchInputEl.addEventListener('input', debounce(renderSelectedProviderModels, 180));
+      previewToggleEl.addEventListener('change', renderSelectedProviderModels);
+      deprecatedToggleEl.addEventListener('change', renderSelectedProviderModels);
+      refreshButtonEl.addEventListener('click', refreshCatalog);
+      metaButtonEl.addEventListener('click', showMeta);
+
+      bootstrap();
+
+      async function bootstrap() {
+        setStatus('Loading providers...');
+        const payload = await fetchJson('/api/providers');
+        state.providers = payload.providers || [];
+        renderProviderList();
+        if (state.providers.length > 0) {
+          selectProvider(state.providers[0].providerId);
+        } else {
+          setStatus('No providers found in the current catalog.', 'warn');
+        }
+      }
+
+      function renderProviderList() {
+        providerListEl.innerHTML = '';
+        for (const provider of state.providers) {
+          const button = document.createElement('button');
+          button.className = `provider-card${provider.providerId === state.selectedProviderId ? ' active' : ''}`;
+          button.innerHTML = `
+            <strong>${escapeHtml(provider.displayName)}</strong>
+            <div class="provider-meta">${escapeHtml(provider.providerId)}</div>
+            <div class="provider-meta">${provider.collections.latest} latest · ${provider.collections.recommended} curated</div>
+          `;
+          button.addEventListener('click', () => selectProvider(provider.providerId));
+          providerListEl.appendChild(button);
+        }
+      }
+
+      async function selectProvider(providerId) {
+        state.selectedProviderId = providerId;
+        renderProviderList();
+
+        const provider = state.providers.find((item) => item.providerId === providerId);
+        if (!provider) {
+          return;
+        }
+
+        setStatus(`Loading ${provider.displayName}...`);
+
+        const setup = await fetchJson(`/api/providers/${encodeURIComponent(providerId)}/setup`);
+        providerTitleEl.textContent = setup.displayName;
+        providerSummaryEl.textContent = setup.auth?.helpText || 'No setup guidance available yet.';
+        authFieldsEl.innerHTML = '';
+        for (const field of setup.auth?.fields || []) {
+          const element = document.createElement('span');
+          element.className = 'field';
+          element.textContent = `${field.label} · ${field.type}${field.required ? ' · required' : ''}`;
+          authFieldsEl.appendChild(element);
+        }
+
+        catalogStatsEl.innerHTML = '';
+        const summary = [
+          `${provider.collections.recommended} curated`,
+          `${provider.collections.latest} latest`,
+          provider.availabilitySource === 'official-plus-public' ? 'official + public' : 'public only',
+        ];
+        for (const item of summary) {
+          const stat = document.createElement('span');
+          stat.className = 'stat';
+          stat.textContent = item;
+          catalogStatsEl.appendChild(stat);
+        }
+
+        availabilityTextEl.textContent = provider.officialSources?.length
+          ? `Official sources: ${provider.officialSources.join(', ')}`
+          : 'This provider is currently using only public catalogs in the demo.';
+
+        await renderSelectedProviderModels();
+      }
+
+      async function renderSelectedProviderModels() {
+        if (!state.selectedProviderId) {
+          return;
+        }
+
+        const params = new URLSearchParams({
+          group: groupSelectEl.value,
+          query: searchInputEl.value,
+          includePreview: String(previewToggleEl.checked),
+          includeDeprecated: String(deprecatedToggleEl.checked),
+        });
+
+        const payload = await fetchJson(`/api/providers/${encodeURIComponent(state.selectedProviderId)}/models?${params.toString()}`);
+        modelRowsEl.innerHTML = '';
+
+        if (!payload.models || payload.models.length === 0) {
+          modelRowsEl.innerHTML = '<tr><td colspan="5" class="muted">No models matched the current filters.</td></tr>';
+          setStatus('No models matched the current filters.', 'warn');
+          return;
+        }
+
+        for (const model of payload.models) {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>
+              <strong>${escapeHtml(model.displayName)}</strong><br>
+              <code>${escapeHtml(model.modelId)}</code>
+            </td>
+            <td>${renderStage(model)}</td>
+            <td>${renderCapabilityBadges(model.capabilities || [])}</td>
+            <td>${model.contextWindow ? `${Intl.NumberFormat().format(model.contextWindow)} tokens` : '—'}</td>
+            <td>${escapeHtml(model.availabilityConfidence || 'unknown')}</td>
+          `;
+          modelRowsEl.appendChild(row);
+        }
+
+        setStatus(`${payload.models.length} models loaded for ${payload.displayName}.`);
+      }
+
+      async function refreshCatalog() {
+        try {
+          refreshButtonEl.disabled = true;
+          setStatus('Refreshing catalog...');
+          await fetchJson('/api/refresh', { method: 'POST' });
+          await bootstrap();
+          setStatus('Catalog refreshed.');
+        } finally {
+          refreshButtonEl.disabled = false;
+        }
+      }
+
+      async function showMeta() {
+        const payload = await fetchJson('/api/catalog/meta');
+        alert(JSON.stringify(payload, null, 2));
+      }
+
+      async function fetchJson(url, options = {}) {
+        const response = await fetch(url, options);
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.message || payload.error || `Request failed: ${response.status}`);
+        }
+        return payload;
+      }
+
+      function renderStage(model) {
+        const badges = [];
+        const stage = model.stage || 'stable';
+        badges.push(`<span class="badge ${escapeHtml(stage)}">${escapeHtml(stage)}</span>`);
+        if (model.isLatestAlias || model.isLatestStableRelease) {
+          badges.push('<span class="badge latest">latest</span>');
+        }
+        return badges.join(' ');
+      }
+
+      function renderCapabilityBadges(capabilities) {
+        if (!capabilities.length) {
+          return '<span class="muted">—</span>';
+        }
+        return capabilities
+          .map((capability) => `<span class="badge">${escapeHtml(capability)}</span>`)
+          .join(' ');
+      }
+
+      function setStatus(message, kind = '') {
+        statusEl.textContent = message;
+        statusEl.className = kind ? `status ${kind}` : 'status';
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      function debounce(fn, delay) {
+        let timer = null;
+        return (...args) => {
+          clearTimeout(timer);
+          timer = setTimeout(() => fn(...args), delay);
+        };
+      }
+    </script>
+  </body>
+</html>

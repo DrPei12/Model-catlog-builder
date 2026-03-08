@@ -24,11 +24,19 @@ Start by copying these resources:
 Run the bootstrap script to generate a provider-first public catalog:
 
 ```bash
-node scripts/sync_model_catalog.mjs \
+npm run sync:catalog -- \
   --output output/model-catalog.generated.json \
   --registry assets/provider-registry.template.json \
   --overrides assets/catalog-overrides.template.json
 ```
+
+Start the interactive demo server:
+
+```bash
+npm run demo
+```
+
+Then open `http://localhost:4177`.
 
 The script is a bootstrap layer, not the final production sync. For enabled providers in production, add official model-list sync and keep public catalogs as fallbacks.
 
@@ -170,6 +178,10 @@ Load this when exposing provider and model data to a frontend, agent tool, or ba
 ### `assets/starter-api/modelCatalogService.mjs`
 
 Copy this when you want a minimal Node service wrapper around the generated catalog. It exposes `listProviders`, `getProviderSetup`, and `listModels` without forcing your product code to parse the catalog shape directly.
+
+### `scripts/run_demo_server.mjs`
+
+Use this when you want a zero-dependency demo server. It serves both JSON APIs and a browser page that demonstrates the provider-first flow.
 
 ### `references/operations.md`
 

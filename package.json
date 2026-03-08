@@ -1,0 +1,10 @@
+{
+  "name": "model-catlog-builder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync:catalog": "node scripts/sync_model_catalog.mjs",
+    "demo": "node scripts/run_demo_server.mjs"
+  }
+}

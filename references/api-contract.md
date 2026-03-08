@@ -4,6 +4,14 @@
 
 Expose a stable product-facing contract so the UI and agent layer never read raw upstream catalogs directly.
 
+The bundled demo server implements the read-only portion of this contract:
+
+- `GET /api/providers`
+- `GET /api/providers/:providerId/setup`
+- `GET /api/providers/:providerId/models`
+- `GET /api/catalog/meta`
+- `POST /api/refresh`
+
 ## Recommended endpoints or tools
 
 ### `listProviders()`
