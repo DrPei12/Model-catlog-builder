@@ -62,6 +62,12 @@ Use it as a fallback metadata source. Do not use it alone to decide which models
 - daily: refresh enabled providers
 - weekly: audit diff volume, deprecations, and pricing changes
 
+For the bundled script, official sync is enabled when these environment variables are present:
+
+- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `GEMINI_API_KEY`
+
 ## Failure behavior
 
 If official sync fails:

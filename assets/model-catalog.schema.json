@@ -47,6 +47,15 @@
           "collections": {
             "type": "object"
           },
+          "availabilitySource": {
+            "type": "string"
+          },
+          "officialSources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "models": {
             "type": "array",
             "items": {
@@ -126,6 +135,9 @@
                 },
                 "hidden": {
                   "type": "boolean"
+                },
+                "availabilityConfidence": {
+                  "type": "string"
                 },
                 "sources": {
                   "type": "array",

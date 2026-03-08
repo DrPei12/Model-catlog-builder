@@ -31,6 +31,12 @@ node scripts/sync_model_catalog.mjs \
 
 The script is a bootstrap layer, not the final production sync. For enabled providers in production, add official model-list sync and keep public catalogs as fallbacks.
 
+If you set any of these environment variables, the script will use official provider model lists before public catalogs:
+
+- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `GEMINI_API_KEY`
+
 ## Workflow
 
 ### 1. Define the provider registry first
@@ -155,6 +161,10 @@ Load this when building the provider picker, auth forms, or model selection view
 ### `references/product-patterns.md`
 
 Load this when you want to borrow proven interaction patterns from OpenCode, Open WebUI, OpenHands, or LobeChat.
+
+### `references/api-contract.md`
+
+Load this when exposing provider and model data to a frontend, agent tool, or backend integration.
 
 ### `references/operations.md`
 

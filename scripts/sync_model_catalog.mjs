@@ -9,6 +9,9 @@ const DEFAULT_OVERRIDES = path.resolve(process.cwd(), 'assets', 'catalog-overrid
 
 const SOURCE_PRIORITY = {
   registry: 100,
+  'official-openai': 95,
+  'official-anthropic': 95,
+  'official-google': 95,
   'models.dev': 80,
   openrouter: 70,
   'vercel-ai-gateway': 70,
@@ -49,12 +52,15 @@ const overrides = await readJsonIfExists(args.overrides || DEFAULT_OVERRIDES, { 
 const catalog = createCatalog(providerRegistry);
 const sourceStatus = {};
 
-const sourceResults = await Promise.allSettled([
+const sourceTasks = [
+  ...buildOfficialSourceTasks(filterProviders, sourceStatus),
   fetchJson('models.dev', 'https://models.dev/api.json'),
   fetchJson('openrouter', 'https://openrouter.ai/api/v1/models'),
   fetchJson('vercel-ai-gateway', 'https://ai-gateway.vercel.sh/v1/models'),
   fetchJson('litellm', 'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json'),
-]);
+];
+
+const sourceResults = await Promise.allSettled(sourceTasks);
 
 for (const result of sourceResults) {
   if (result.status === 'fulfilled') {
@@ -156,6 +162,160 @@ async function fetchJson(sourceName, url) {
   };
 }
 
+function buildOfficialSourceTasks(filterProvidersSet, sourceStatusMap) {
+  const officialSources = [
+    {
+      sourceName: 'official-openai',
+      providerId: 'openai',
+      envVar: 'OPENAI_API_KEY',
+      fetcher: fetchOpenAiModels,
+    },
+    {
+      sourceName: 'official-anthropic',
+      providerId: 'anthropic',
+      envVar: 'ANTHROPIC_API_KEY',
+      fetcher: fetchAnthropicModels,
+    },
+    {
+      sourceName: 'official-google',
+      providerId: 'google',
+      envVar: 'GEMINI_API_KEY',
+      fetcher: fetchGeminiModels,
+    },
+  ];
+
+  const tasks = [];
+
+  for (const source of officialSources) {
+    if (shouldSkipProvider(source.providerId, filterProvidersSet)) {
+      sourceStatusMap[source.sourceName] = {
+        status: 'skipped',
+        reason: 'provider filtered out',
+        fetchedAt: new Date().toISOString(),
+      };
+      continue;
+    }
+
+    if (!process.env[source.envVar]) {
+      sourceStatusMap[source.sourceName] = {
+        status: 'skipped',
+        reason: `missing env ${source.envVar}`,
+        fetchedAt: new Date().toISOString(),
+      };
+      continue;
+    }
+
+    tasks.push(source.fetcher(process.env[source.envVar]));
+  }
+
+  return tasks;
+}
+
+async function fetchOpenAiModels(apiKey) {
+  const response = await fetch('https://api.openai.com/v1/models', {
+    signal: AbortSignal.timeout(20000),
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'User-Agent': 'llm-model-catalog-builder',
+    },
+  });
+
+  if (!response.ok) {
+    const error = new Error(`official-openai request failed with ${response.status}`);
+    error.sourceName = 'official-openai';
+    throw error;
+  }
+
+  return {
+    name: 'official-openai',
+    data: await response.json(),
+  };
+}
+
+async function fetchAnthropicModels(apiKey) {
+  const data = [];
+  let afterId = '';
+
+  while (true) {
+    const url = new URL('https://api.anthropic.com/v1/models');
+    url.searchParams.set('limit', '1000');
+    url.searchParams.set('beta', 'true');
+    if (afterId) {
+      url.searchParams.set('after_id', afterId);
+    }
+
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(20000),
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'User-Agent': 'llm-model-catalog-builder',
+      },
+    });
+
+    if (!response.ok) {
+      const error = new Error(`official-anthropic request failed with ${response.status}`);
+      error.sourceName = 'official-anthropic';
+      throw error;
+    }
+
+    const payload = await response.json();
+    data.push(...(payload.data || []));
+
+    if (!payload.has_more || !payload.last_id) {
+      break;
+    }
+
+    afterId = payload.last_id;
+  }
+
+  return {
+    name: 'official-anthropic',
+    data: { data },
+  };
+}
+
+async function fetchGeminiModels(apiKey) {
+  const models = [];
+  let pageToken = '';
+
+  while (true) {
+    const url = new URL('https://generativelanguage.googleapis.com/v1beta/models');
+    url.searchParams.set('key', apiKey);
+    url.searchParams.set('pageSize', '1000');
+    if (pageToken) {
+      url.searchParams.set('pageToken', pageToken);
+    }
+
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(20000),
+      headers: {
+        'User-Agent': 'llm-model-catalog-builder',
+      },
+    });
+
+    if (!response.ok) {
+      const error = new Error(`official-google request failed with ${response.status}`);
+      error.sourceName = 'official-google';
+      throw error;
+    }
+
+    const payload = await response.json();
+    models.push(...(payload.models || []));
+
+    if (!payload.nextPageToken) {
+      break;
+    }
+
+    pageToken = payload.nextPageToken;
+  }
+
+  return {
+    name: 'official-google',
+    data: { models },
+  };
+}
+
 function createCatalog(registry) {
   const providers = new Map();
   for (const entry of registry.providers || []) {
@@ -172,6 +332,7 @@ function createCatalog(registry) {
       registryLocked: true,
       models: new Map(),
       collections: createEmptyCollections(),
+      officialSources: new Set(),
       sources: new Set(['registry']),
     });
   }
@@ -190,6 +351,21 @@ function createEmptyCollections() {
 }
 
 function ingestSource(catalog, sourceName, data, filterProvidersSet) {
+  if (sourceName === 'official-openai') {
+    ingestOfficialOpenAi(catalog, data, filterProvidersSet);
+    return;
+  }
+
+  if (sourceName === 'official-anthropic') {
+    ingestOfficialAnthropic(catalog, data, filterProvidersSet);
+    return;
+  }
+
+  if (sourceName === 'official-google') {
+    ingestOfficialGoogle(catalog, data, filterProvidersSet);
+    return;
+  }
+
   if (sourceName === 'models.dev') {
     ingestModelsDev(catalog, data, filterProvidersSet);
     return;
@@ -207,6 +383,119 @@ function ingestSource(catalog, sourceName, data, filterProvidersSet) {
 
   if (sourceName === 'litellm') {
     ingestLiteLlm(catalog, data, filterProvidersSet);
+  }
+}
+
+function ingestOfficialOpenAi(catalog, data, filterProvidersSet) {
+  const providerId = 'openai';
+  if (shouldSkipProvider(providerId, filterProvidersSet)) {
+    return;
+  }
+
+  const provider = ensureProvider(catalog, {
+    providerId,
+    displayName: 'OpenAI',
+    sourceName: 'official-openai',
+  });
+
+  for (const model of data.data || []) {
+    const modelId = model.id;
+    const stage = detectStage({ id: modelId });
+
+    upsertModel(provider, modelId, {
+      displayName: humanizeModelId(modelId),
+      family: deriveFamily(modelId),
+      vendorId: normalizeProviderId(model.owned_by),
+      stage,
+      releaseDate: normalizeTimestamp(model.created),
+      lastUpdated: normalizeTimestamp(model.created),
+      capabilities: inferCapabilitiesFromId(modelId),
+      tags: buildTags({
+        id: modelId,
+        name: modelId,
+        stage,
+      }),
+    }, 'official-openai');
+  }
+}
+
+function ingestOfficialAnthropic(catalog, data, filterProvidersSet) {
+  const providerId = 'anthropic';
+  if (shouldSkipProvider(providerId, filterProvidersSet)) {
+    return;
+  }
+
+  const provider = ensureProvider(catalog, {
+    providerId,
+    displayName: 'Anthropic',
+    sourceName: 'official-anthropic',
+  });
+
+  for (const model of data.data || []) {
+    const modelId = model.id;
+    const stage = detectStage({
+      id: modelId,
+      name: model.display_name,
+    });
+
+    upsertModel(provider, modelId, {
+      displayName: model.display_name || humanizeModelId(modelId),
+      family: deriveFamily(modelId),
+      stage,
+      releaseDate: normalizeDate(model.created_at),
+      lastUpdated: normalizeDate(model.created_at),
+      capabilities: inferCapabilitiesFromId(modelId),
+      tags: buildTags({
+        id: modelId,
+        name: model.display_name,
+        stage,
+      }),
+    }, 'official-anthropic');
+  }
+}
+
+function ingestOfficialGoogle(catalog, data, filterProvidersSet) {
+  const providerId = 'google';
+  if (shouldSkipProvider(providerId, filterProvidersSet)) {
+    return;
+  }
+
+  const provider = ensureProvider(catalog, {
+    providerId,
+    displayName: 'Google Gemini',
+    sourceName: 'official-google',
+  });
+
+  for (const model of data.models || []) {
+    const modelId = (model.baseModelId || model.name || '').replace(/^models\//, '');
+    if (!modelId) {
+      continue;
+    }
+
+    const stage = detectStage({
+      id: modelId,
+      name: model.displayName,
+      tags: model.supportedGenerationMethods || [],
+    });
+
+    upsertModel(provider, modelId, {
+      displayName: model.displayName || humanizeModelId(modelId),
+      family: deriveFamily(modelId),
+      stage,
+      contextWindow: model.inputTokenLimit ?? null,
+      maxOutputTokens: model.outputTokenLimit ?? null,
+      capabilities: buildCapabilities({
+        modalities: inferGeminiModalities(model),
+        supportedParameters: model.supportedGenerationMethods,
+        family: deriveFamily(modelId),
+      }),
+      tags: buildTags({
+        id: modelId,
+        name: model.displayName,
+        extraTags: model.supportedGenerationMethods || [],
+        stage,
+      }),
+    }, 'official-google');
   }
 }
 
@@ -501,7 +790,17 @@ function finalizeProviders(catalog, filterProvidersSet) {
 
     for (const familyModels of families.values()) {
       const stableModels = familyModels
-        .filter((model) => model.stage === 'stable' && model.releaseDate)
+        .filter((model) => {
+          if (model.stage !== 'stable' || !model.releaseDate) {
+            return false;
+          }
+
+          if (provider.officialSources.size > 0) {
+            return hasOfficialSource(model);
+          }
+
+          return true;
+        })
         .sort((left, right) => (right.releaseDate || '').localeCompare(left.releaseDate || ''));
 
       if (stableModels.length > 0) {
@@ -514,11 +813,31 @@ function finalizeProviders(catalog, filterProvidersSet) {
     provider.collections = {
       recommendedIds: sortedModels.filter((model) => model.recommended && !model.hidden).map((model) => model.modelId),
       autoRecommendedIds: sortedModels
-        .filter((model) => !model.recommended && model.isLatestStableRelease && model.stage === 'stable' && !model.hidden)
+        .filter((model) => {
+          if (model.recommended || !model.isLatestStableRelease || model.stage !== 'stable' || model.hidden) {
+            return false;
+          }
+
+          if (provider.officialSources.size > 0) {
+            return hasOfficialSource(model);
+          }
+
+          return true;
+        })
         .slice(0, 5)
         .map((model) => model.modelId),
       latestIds: sortedModels
-        .filter((model) => (model.isLatestAlias || model.isLatestStableRelease) && !model.hidden)
+        .filter((model) => {
+          if (!(model.isLatestAlias || model.isLatestStableRelease) || model.hidden) {
+            return false;
+          }
+
+          if (provider.officialSources.size > 0) {
+            return hasOfficialSource(model);
+          }
+
+          return true;
+        })
         .slice(0, 20)
         .map((model) => model.modelId),
       previewIds: sortedModels.filter((model) => model.stage === 'preview').map((model) => model.modelId),
@@ -535,6 +854,8 @@ function serializeProvider(provider) {
     auth: provider.auth,
     discovery: provider.discovery,
     collections: provider.collections,
+    availabilitySource: provider.officialSources.size > 0 ? 'official-plus-public' : 'public-catalog',
+    officialSources: [...provider.officialSources].sort(),
     sources: [...provider.sources].sort(),
     modelCount: provider.models.size,
     models: [...provider.models.values()].sort(compareModels).map(serializeModel),
@@ -581,6 +902,7 @@ function serializeModel(model) {
     tags: [...tags].sort(),
     recommended,
     hidden,
+    availabilityConfidence: inferAvailabilityConfidence(model),
     isLatestAlias,
     isLatestStableRelease,
     pinnedTargetModelId,
@@ -597,6 +919,7 @@ function ensureProvider(catalog, { providerId, displayName, sourceName }) {
       discovery: null,
       models: new Map(),
       collections: createEmptyCollections(),
+      officialSources: new Set(),
       sources: new Set(),
     });
   }
@@ -608,6 +931,9 @@ function ensureProvider(catalog, { providerId, displayName, sourceName }) {
     (!provider.displayName || provider.displayName === titleCase(provider.providerId))
   ) {
     provider.displayName = displayName;
+  }
+  if (sourceName.startsWith('official-')) {
+    provider.officialSources.add(sourceName);
   }
   provider.sources.add(sourceName);
   return provider;
@@ -693,7 +1019,7 @@ function buildCapabilities({ modalities, reasoning, toolCall, structuredOutput, 
   if (structuredOutput || parameters.includes('structured_outputs') || parameters.includes('response_format')) {
     capabilities.push('structured-output');
   }
-  if (String(family || '').includes('embed')) {
+  if (String(family || '').includes('embed') || parameters.includes('embedcontent')) {
     capabilities.push('embeddings');
   }
   if (combined.includes('image') && outputModalities.map((item) => String(item).toLowerCase()).includes('image')) {
@@ -825,6 +1151,62 @@ function normalizeTimestamp(value) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
 }
 
+function inferGeminiModalities(model) {
+  const methods = (model.supportedGenerationMethods || []).map((item) => String(item).toLowerCase());
+  const name = `${model.name || ''} ${model.displayName || ''}`.toLowerCase();
+  const input = ['text'];
+  const output = ['text'];
+
+  if (name.includes('vision') || name.includes('image')) {
+    input.push('image');
+  }
+  if (methods.includes('embedcontent')) {
+    output.push('embedding');
+  }
+
+  return {
+    input: [...new Set(input)],
+    output: [...new Set(output)],
+  };
+}
+
+function inferCapabilitiesFromId(modelId) {
+  const id = String(modelId || '').toLowerCase();
+  const capabilities = [];
+
+  if (id.includes('embed')) {
+    capabilities.push('embeddings');
+  }
+  if (id.includes('vision') || id.includes('image') || id.includes('4o')) {
+    capabilities.push('vision');
+  }
+  if (id.includes('audio') || id.includes('transcribe') || id.includes('tts') || id.includes('realtime')) {
+    capabilities.push('audio');
+  }
+  if (id.startsWith('o') || id.includes('reason') || id.includes('think')) {
+    capabilities.push('reasoning');
+  }
+  if (id.includes('gpt-') || id.includes('claude') || id.includes('gemini')) {
+    capabilities.push('tools');
+  }
+
+  return [...new Set(capabilities)];
+}
+
+function humanizeModelId(modelId) {
+  return String(modelId)
+    .replace(/^models\//, '')
+    .split(/[-/]/g)
+    .filter(Boolean)
+    .map((part) => {
+      if (/^\d+(\.\d+)?$/.test(part) || /^[a-z]\d/i.test(part) || part === part.toUpperCase()) {
+        return part.toUpperCase();
+      }
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    })
+    .join(' ');
+}
+
 function hasLatestKeyword(value) {
   return String(value || '').toLowerCase().includes('latest');
 }
@@ -835,6 +1217,20 @@ function mergeUnique(left, right) {
 
 function addTag(model, tag) {
   model.tags = mergeUnique(model.tags, [tag]);
+}
+
+function hasOfficialSource(model) {
+  return (model.sources || []).some((source) => String(source).startsWith('official-'));
+}
+
+function inferAvailabilityConfidence(model) {
+  if (hasOfficialSource(model)) {
+    return 'official';
+  }
+  if ((model.sources || []).length > 1) {
+    return 'mixed-public';
+  }
+  return 'public-only';
 }
 
 function shouldSkipProvider(providerId, filterProvidersSet) {
