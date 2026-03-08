@@ -12,6 +12,7 @@ import {
   listProviders,
   loadCatalog,
 } from '../assets/starter-api/modelCatalogService.mjs';
+import { validateProviderCredentials } from '../assets/starter-api/validateProviderCredentials.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -79,15 +80,13 @@ export async function startDemoServer(options = {}) {
       const providerValidateMatch = url.pathname.match(/^\/api\/providers\/([^/]+)\/validate$/);
       if (request.method === 'POST' && providerValidateMatch) {
         const providerId = decodeURIComponent(providerValidateMatch[1]);
-        if (!getProviderSetup(catalog, providerId)) {
+        const providerSetup = getProviderSetup(catalog, providerId);
+        if (!providerSetup) {
           return sendJson(response, 404, { error: 'provider_not_found' });
         }
-        return sendJson(response, 501, {
-          ok: false,
-          providerId,
-          errorCode: 'not_implemented',
-          errorMessage: 'Credential validation is the next production step. This demo only exposes catalog and setup APIs.',
-        });
+        const body = await readJsonBody(request);
+        const result = await validateProviderCredentials(providerSetup, body?.credentials || {});
+        return sendJson(response, 200, result);
       }
 
       if (request.method === 'POST' && url.pathname === '/api/refresh') {
@@ -201,4 +200,23 @@ function sendJson(response, statusCode, payload) {
     'Cache-Control': 'no-store',
   });
   response.end(JSON.stringify(payload, null, 2));
+}
+
+async function readJsonBody(request) {
+  const chunks = [];
+
+  for await (const chunk of request) {
+    chunks.push(chunk);
+  }
+
+  if (chunks.length === 0) {
+    return {};
+  }
+
+  const body = Buffer.concat(chunks).toString('utf8');
+  if (!body.trim()) {
+    return {};
+  }
+
+  return JSON.parse(body);
 }

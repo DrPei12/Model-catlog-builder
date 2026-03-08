@@ -155,10 +155,18 @@
 
       .field-list,
       .badge-list,
-      .stat-list {
+      .stat-list,
+      .input-grid {
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
+      }
+
+      .input-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin-top: 14px;
       }
 
       .field,
@@ -173,6 +181,24 @@
 
       .field {
         background: rgba(255, 255, 255, 0.82);
+      }
+
+      .input-card {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .input-card label {
+        font-size: 0.92rem;
+        color: var(--muted);
+      }
+
+      .input-card input {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px 14px;
+        background: white;
       }
 
       .badge.latest {
@@ -252,6 +278,16 @@
         color: var(--warning);
       }
 
+      pre {
+        margin: 12px 0 0;
+        padding: 14px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: #f8f6ef;
+        overflow: auto;
+        font-size: 0.9rem;
+      }
+
       @media (max-width: 1100px) {
         .layout {
           grid-template-columns: 1fr;
@@ -295,6 +331,11 @@
               <h2 id="providerTitle">Select a provider</h2>
               <p class="muted" id="providerSummary">The setup form will appear here.</p>
               <div class="field-list" id="authFields"></div>
+              <div class="input-grid" id="authInputs"></div>
+              <div class="toolbar" style="margin-top: 14px;">
+                <button id="validateButton">Validate credentials</button>
+              </div>
+              <pre id="validationOutput">Validation results will appear here.</pre>
             </section>
 
             <section class="panel">
@@ -343,9 +384,11 @@
       const providerTitleEl = document.getElementById('providerTitle');
       const providerSummaryEl = document.getElementById('providerSummary');
       const authFieldsEl = document.getElementById('authFields');
+      const authInputsEl = document.getElementById('authInputs');
       const catalogStatsEl = document.getElementById('catalogStats');
       const availabilityTextEl = document.getElementById('availabilityText');
       const modelRowsEl = document.getElementById('modelRows');
+      const validationOutputEl = document.getElementById('validationOutput');
       const statusEl = document.getElementById('status');
       const groupSelectEl = document.getElementById('groupSelect');
       const searchInputEl = document.getElementById('searchInput');
@@ -353,6 +396,9 @@
       const deprecatedToggleEl = document.getElementById('deprecatedToggle');
       const refreshButtonEl = document.getElementById('refreshButton');
       const metaButtonEl = document.getElementById('metaButton');
+      const validateButtonEl = document.getElementById('validateButton');
+
+      const providerForms = new Map();
 
       groupSelectEl.addEventListener('change', renderSelectedProviderModels);
       searchInputEl.addEventListener('input', debounce(renderSelectedProviderModels, 180));
@@ -360,6 +406,7 @@
       deprecatedToggleEl.addEventListener('change', renderSelectedProviderModels);
       refreshButtonEl.addEventListener('click', refreshCatalog);
       metaButtonEl.addEventListener('click', showMeta);
+      validateButtonEl.addEventListener('click', validateCredentials);
 
       bootstrap();
 
@@ -405,12 +452,36 @@
         providerTitleEl.textContent = setup.displayName;
         providerSummaryEl.textContent = setup.auth?.helpText || 'No setup guidance available yet.';
         authFieldsEl.innerHTML = '';
+        authInputsEl.innerHTML = '';
         for (const field of setup.auth?.fields || []) {
           const element = document.createElement('span');
           element.className = 'field';
           element.textContent = `${field.label} · ${field.type}${field.required ? ' · required' : ''}`;
           authFieldsEl.appendChild(element);
+
+          const wrapper = document.createElement('div');
+          wrapper.className = 'input-card';
+
+          const label = document.createElement('label');
+          label.textContent = field.label;
+          label.htmlFor = `field-${field.id}`;
+
+          const input = document.createElement('input');
+          input.id = `field-${field.id}`;
+          input.type = field.type === 'password' ? 'password' : 'text';
+          input.placeholder = field.placeholder || '';
+          input.value = providerForms.get(providerId)?.[field.id] || '';
+          input.addEventListener('input', () => {
+            const current = providerForms.get(providerId) || {};
+            current[field.id] = input.value;
+            providerForms.set(providerId, current);
+          });
+
+          wrapper.append(label, input);
+          authInputsEl.appendChild(wrapper);
         }
+
+        validationOutputEl.textContent = 'Validation results will appear here.';
 
         catalogStatsEl.innerHTML = '';
         const summary = [
@@ -486,6 +557,30 @@
       async function showMeta() {
         const payload = await fetchJson('/api/catalog/meta');
         alert(JSON.stringify(payload, null, 2));
+      }
+
+      async function validateCredentials() {
+        if (!state.selectedProviderId) {
+          return;
+        }
+
+        const credentials = providerForms.get(state.selectedProviderId) || {};
+        validateButtonEl.disabled = true;
+
+        try {
+          const payload = await fetchJson(`/api/providers/${encodeURIComponent(state.selectedProviderId)}/validate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ credentials }),
+          });
+
+          validationOutputEl.textContent = JSON.stringify(payload, null, 2);
+          setStatus(payload.ok ? 'Credentials validated.' : payload.errorMessage || 'Validation failed.', payload.ok ? '' : 'warn');
+        } finally {
+          validateButtonEl.disabled = false;
+        }
       }
 
       async function fetchJson(url, options = {}) {

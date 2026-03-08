@@ -179,6 +179,10 @@ Load this when exposing provider and model data to a frontend, agent tool, or ba
 
 Copy this when you want a minimal Node service wrapper around the generated catalog. It exposes `listProviders`, `getProviderSetup`, and `listModels` without forcing your product code to parse the catalog shape directly.
 
+### `assets/starter-api/validateProviderCredentials.mjs`
+
+Copy this when you want a real credential validator for the production path. The current version supports `OpenAI`, `Anthropic`, `Google Gemini`, `OpenRouter`, `Vercel AI Gateway`, and `OpenAI-Compatible` endpoints, with explicit fallback messages for unsupported providers.
+
 ### `scripts/run_demo_server.mjs`
 
 Use this when you want a zero-dependency demo server. It serves both JSON APIs and a browser page that demonstrates the provider-first flow.

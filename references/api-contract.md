@@ -53,6 +53,27 @@ Suggested fields:
 - `errorCode`
 - `errorMessage`
 
+Suggested request body for HTTP:
+
+```json
+{
+  "credentials": {
+    "apiKey": "..."
+  }
+}
+```
+
+Current starter support:
+
+- `openai`
+- `anthropic`
+- `google`
+- `openrouter`
+- `vercel-ai-gateway`
+- `openai-compatible`
+
+The starter returns a structured `not_supported_yet` response for providers that still need a deployment-aware validator, such as `azure-openai`.
+
 ### `listModels(providerId, filters)`
 
 Return only normalized records.
