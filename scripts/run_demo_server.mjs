@@ -3,15 +3,14 @@
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import {
   getProviderSetup,
   listModels,
   listProviders,
-  loadCatalog,
 } from '../assets/starter-api/modelCatalogService.mjs';
+import { createCatalogRuntimeService } from '../assets/starter-api/catalogRuntimeService.mjs';
 import { validateProviderCredentials } from '../assets/starter-api/validateProviderCredentials.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -19,14 +18,24 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, '..');
 const DEFAULT_PORT = Number(process.env.PORT || '4177');
 const DEFAULT_CATALOG_PATH = path.resolve(process.env.CATALOG_PATH || path.join(ROOT_DIR, 'output', 'model-catalog.generated.json'));
+const DEFAULT_STATE_PATH = path.resolve(process.env.RUNTIME_STATE_PATH || path.join(ROOT_DIR, 'output', 'runtime-state.json'));
+const SYNC_SCRIPT_PATH = path.join(ROOT_DIR, 'scripts', 'sync_model_catalog.mjs');
 const DEMO_PAGE_PATH = path.join(ROOT_DIR, 'assets', 'starter-api', 'demoPage.html');
 
 export async function startDemoServer(options = {}) {
   const port = Number(options.port || DEFAULT_PORT);
   const catalogPath = path.resolve(options.catalogPath || DEFAULT_CATALOG_PATH);
+  const statePath = path.resolve(options.statePath || DEFAULT_STATE_PATH);
 
-  await ensureCatalog(catalogPath);
-  let catalog = await loadCatalog(catalogPath);
+  const runtime = await createCatalogRuntimeService({
+    rootDir: ROOT_DIR,
+    catalogPath,
+    statePath,
+    syncScriptPath: SYNC_SCRIPT_PATH,
+  });
+
+  await runtime.ensureCatalog();
+  let catalog = await runtime.loadCatalog();
 
   const server = http.createServer(async (request, response) => {
     try {
@@ -48,6 +57,7 @@ export async function startDemoServer(options = {}) {
         return sendJson(response, 200, {
           generatedAt: catalog?.generatedAt || null,
           sourceStatus: catalog?.sourceStatus || {},
+          statePath,
         });
       }
 
@@ -77,6 +87,20 @@ export async function startDemoServer(options = {}) {
         return sendJson(response, 200, result);
       }
 
+      const providerRuntimeMatch = url.pathname.match(/^\/api\/providers\/([^/]+)\/runtime$/);
+      if (request.method === 'GET' && providerRuntimeMatch) {
+        const providerId = decodeURIComponent(providerRuntimeMatch[1]);
+        const providerSetup = getProviderSetup(catalog, providerId);
+        if (!providerSetup) {
+          return sendJson(response, 404, { error: 'provider_not_found' });
+        }
+        const runtimeState = await runtime.getProviderState(providerId);
+        return sendJson(response, 200, {
+          providerId,
+          runtime: runtimeState,
+        });
+      }
+
       const providerValidateMatch = url.pathname.match(/^\/api\/providers\/([^/]+)\/validate$/);
       if (request.method === 'POST' && providerValidateMatch) {
         const providerId = decodeURIComponent(providerValidateMatch[1]);
@@ -89,9 +113,34 @@ export async function startDemoServer(options = {}) {
         return sendJson(response, 200, result);
       }
 
+      const providerRefreshMatch = url.pathname.match(/^\/api\/providers\/([^/]+)\/refresh$/);
+      if (request.method === 'POST' && providerRefreshMatch) {
+        const providerId = decodeURIComponent(providerRefreshMatch[1]);
+        const providerSetup = getProviderSetup(catalog, providerId);
+        if (!providerSetup) {
+          return sendJson(response, 404, { error: 'provider_not_found' });
+        }
+
+        const result = await runtime.refreshProvider(providerId);
+        if (result.ok) {
+          catalog = await runtime.loadCatalog();
+        }
+        return sendJson(response, result.ok ? 200 : 500, result);
+      }
+
+      if (request.method === 'GET' && url.pathname === '/api/operations/refresh-runs') {
+        const providerId = url.searchParams.get('providerId') || null;
+        const limit = Number(url.searchParams.get('limit') || '20');
+        const refreshRuns = await runtime.getRefreshRuns({ providerId, limit });
+        return sendJson(response, 200, { refreshRuns });
+      }
+
       if (request.method === 'POST' && url.pathname === '/api/refresh') {
-        const summary = await refreshCatalog();
-        return sendJson(response, 200, summary);
+        const result = await runtime.refreshAllProviders();
+        if (result.ok) {
+          catalog = await runtime.loadCatalog();
+        }
+        return sendJson(response, result.ok ? 200 : 500, result);
       }
 
       sendJson(response, 404, { error: 'not_found' });
@@ -111,56 +160,16 @@ export async function startDemoServer(options = {}) {
     server,
     port,
     catalogPath,
+    statePath,
     getCatalog: () => catalog,
   };
-
-  async function refreshCatalog() {
-    const startedAt = new Date().toISOString();
-    await runCatalogSync(catalogPath);
-    catalog = await loadCatalog(catalogPath);
-    return {
-      ok: true,
-      startedAt,
-      completedAt: new Date().toISOString(),
-      generatedAt: catalog.generatedAt,
-      sourceStatus: catalog.sourceStatus,
-      providerCount: catalog.providers?.length || 0,
-    };
-  }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
   const instance = await startDemoServer();
   console.log(`Demo server running at http://localhost:${instance.port}`);
   console.log(`Catalog path: ${instance.catalogPath}`);
-}
-
-async function ensureCatalog(catalogPath) {
-  try {
-    await fs.access(catalogPath);
-  } catch {
-    await runCatalogSync(catalogPath);
-  }
-}
-
-async function runCatalogSync(catalogPath) {
-  const scriptPath = path.join(ROOT_DIR, 'scripts', 'sync_model_catalog.mjs');
-  await new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [scriptPath, '--output', catalogPath], {
-      cwd: ROOT_DIR,
-      stdio: 'inherit',
-      env: process.env,
-    });
-
-    child.on('exit', (code) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-      reject(new Error(`Catalog sync failed with exit code ${code}`));
-    });
-    child.on('error', reject);
-  });
+  console.log(`Runtime state path: ${instance.statePath}`);
 }
 
 function parseModelFilters(url) {

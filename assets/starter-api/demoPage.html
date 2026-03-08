@@ -154,9 +154,7 @@
       }
 
       .field-list,
-      .badge-list,
-      .stat-list,
-      .input-grid {
+      .stat-list {
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
@@ -199,6 +197,12 @@
         border-radius: 14px;
         padding: 12px 14px;
         background: white;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
       }
 
       .badge.latest {
@@ -306,14 +310,15 @@
           <p class="muted">Provider-first LLM catalog demo</p>
           <h1>Choose provider first. Everything else becomes deterministic.</h1>
           <p>
-            This demo exposes the exact flow the skill is designed to standardize:
-            pick a provider, inspect its auth shape, then query a normalized model catalog
-            grouped by recommended, latest, or all.
+            This demo now shows both the product flow and the operational flow:
+            choose a provider, inspect its auth shape, validate credentials, then
+            query or refresh the normalized model catalog while recording sync history.
           </p>
         </div>
         <div class="toolbar">
           <button class="primary" id="refreshButton">Refresh catalog</button>
           <button id="metaButton">Show source status</button>
+          <button id="historyButton">Show refresh history</button>
         </div>
       </div>
 
@@ -334,8 +339,10 @@
               <div class="input-grid" id="authInputs"></div>
               <div class="toolbar" style="margin-top: 14px;">
                 <button id="validateButton">Validate credentials</button>
+                <button id="providerRefreshButton">Refresh selected provider</button>
               </div>
               <pre id="validationOutput">Validation results will appear here.</pre>
+              <pre id="runtimeOutput">Runtime provider state will appear here.</pre>
             </section>
 
             <section class="panel">
@@ -389,6 +396,7 @@
       const availabilityTextEl = document.getElementById('availabilityText');
       const modelRowsEl = document.getElementById('modelRows');
       const validationOutputEl = document.getElementById('validationOutput');
+      const runtimeOutputEl = document.getElementById('runtimeOutput');
       const statusEl = document.getElementById('status');
       const groupSelectEl = document.getElementById('groupSelect');
       const searchInputEl = document.getElementById('searchInput');
@@ -396,7 +404,9 @@
       const deprecatedToggleEl = document.getElementById('deprecatedToggle');
       const refreshButtonEl = document.getElementById('refreshButton');
       const metaButtonEl = document.getElementById('metaButton');
+      const historyButtonEl = document.getElementById('historyButton');
       const validateButtonEl = document.getElementById('validateButton');
+      const providerRefreshButtonEl = document.getElementById('providerRefreshButton');
 
       const providerForms = new Map();
 
@@ -406,20 +416,29 @@
       deprecatedToggleEl.addEventListener('change', renderSelectedProviderModels);
       refreshButtonEl.addEventListener('click', refreshCatalog);
       metaButtonEl.addEventListener('click', showMeta);
+      historyButtonEl.addEventListener('click', showRefreshHistory);
       validateButtonEl.addEventListener('click', validateCredentials);
+      providerRefreshButtonEl.addEventListener('click', refreshSelectedProvider);
 
       bootstrap();
 
-      async function bootstrap() {
+      async function bootstrap(preferredProviderId = null) {
         setStatus('Loading providers...');
         const payload = await fetchJson('/api/providers');
         state.providers = payload.providers || [];
         renderProviderList();
-        if (state.providers.length > 0) {
-          selectProvider(state.providers[0].providerId);
-        } else {
+
+        if (state.providers.length === 0) {
           setStatus('No providers found in the current catalog.', 'warn');
+          return;
         }
+
+        const nextProviderId =
+          preferredProviderId && state.providers.some((provider) => provider.providerId === preferredProviderId)
+            ? preferredProviderId
+            : state.providers[0].providerId;
+
+        await selectProvider(nextProviderId);
       }
 
       function renderProviderList() {
@@ -432,7 +451,9 @@
             <div class="provider-meta">${escapeHtml(provider.providerId)}</div>
             <div class="provider-meta">${provider.collections.latest} latest · ${provider.collections.recommended} curated</div>
           `;
-          button.addEventListener('click', () => selectProvider(provider.providerId));
+          button.addEventListener('click', () => {
+            void selectProvider(provider.providerId);
+          });
           providerListEl.appendChild(button);
         }
       }
@@ -453,6 +474,7 @@
         providerSummaryEl.textContent = setup.auth?.helpText || 'No setup guidance available yet.';
         authFieldsEl.innerHTML = '';
         authInputsEl.innerHTML = '';
+
         for (const field of setup.auth?.fields || []) {
           const element = document.createElement('span');
           element.className = 'field';
@@ -482,6 +504,7 @@
         }
 
         validationOutputEl.textContent = 'Validation results will appear here.';
+        await renderRuntimeState();
 
         catalogStatsEl.innerHTML = '';
         const summary = [
@@ -489,6 +512,7 @@
           `${provider.collections.latest} latest`,
           provider.availabilitySource === 'official-plus-public' ? 'official + public' : 'public only',
         ];
+
         for (const item of summary) {
           const stat = document.createElement('span');
           stat.className = 'stat';
@@ -515,7 +539,9 @@
           includeDeprecated: String(deprecatedToggleEl.checked),
         });
 
-        const payload = await fetchJson(`/api/providers/${encodeURIComponent(state.selectedProviderId)}/models?${params.toString()}`);
+        const payload = await fetchJson(
+          `/api/providers/${encodeURIComponent(state.selectedProviderId)}/models?${params.toString()}`
+        );
         modelRowsEl.innerHTML = '';
 
         if (!payload.models || payload.models.length === 0) {
@@ -545,17 +571,42 @@
       async function refreshCatalog() {
         try {
           refreshButtonEl.disabled = true;
-          setStatus('Refreshing catalog...');
+          setStatus('Refreshing full catalog...');
           await fetchJson('/api/refresh', { method: 'POST' });
-          await bootstrap();
+          await bootstrap(state.selectedProviderId);
           setStatus('Catalog refreshed.');
         } finally {
           refreshButtonEl.disabled = false;
         }
       }
 
+      async function refreshSelectedProvider() {
+        if (!state.selectedProviderId) {
+          return;
+        }
+
+        const providerId = state.selectedProviderId;
+
+        try {
+          providerRefreshButtonEl.disabled = true;
+          setStatus(`Refreshing ${providerId}...`);
+          await fetchJson(`/api/providers/${encodeURIComponent(providerId)}/refresh`, {
+            method: 'POST',
+          });
+          await bootstrap(providerId);
+          setStatus(`Provider ${providerId} refreshed.`);
+        } finally {
+          providerRefreshButtonEl.disabled = false;
+        }
+      }
+
       async function showMeta() {
         const payload = await fetchJson('/api/catalog/meta');
+        alert(JSON.stringify(payload, null, 2));
+      }
+
+      async function showRefreshHistory() {
+        const payload = await fetchJson('/api/operations/refresh-runs?limit=20');
         alert(JSON.stringify(payload, null, 2));
       }
 
@@ -581,6 +632,16 @@
         } finally {
           validateButtonEl.disabled = false;
         }
+      }
+
+      async function renderRuntimeState() {
+        if (!state.selectedProviderId) {
+          runtimeOutputEl.textContent = 'Runtime provider state will appear here.';
+          return;
+        }
+
+        const payload = await fetchJson(`/api/providers/${encodeURIComponent(state.selectedProviderId)}/runtime`);
+        runtimeOutputEl.textContent = JSON.stringify(payload.runtime || {}, null, 2);
       }
 
       async function fetchJson(url, options = {}) {

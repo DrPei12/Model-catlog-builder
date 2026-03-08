@@ -183,9 +183,17 @@ Copy this when you want a minimal Node service wrapper around the generated cata
 
 Copy this when you want a real credential validator for the production path. The current version supports `OpenAI`, `Anthropic`, `Google Gemini`, `OpenRouter`, `Vercel AI Gateway`, and `OpenAI-Compatible` endpoints, with explicit fallback messages for unsupported providers.
 
+### `assets/starter-api/catalogRuntimeService.mjs`
+
+Copy this when you want refresh orchestration and runtime state without wiring those concerns directly into your HTTP server. It supports full-catalog refresh, provider-scoped refresh, refresh logs, and provider runtime summaries backed by a JSON state file.
+
+### `assets/starter-api/runtimeStateStore.mjs`
+
+Copy this when you need a lightweight persistence layer for sync runs before moving to a real database. It stores recent refresh runs and per-provider operational summaries in a single JSON file.
+
 ### `scripts/run_demo_server.mjs`
 
-Use this when you want a zero-dependency demo server. It serves both JSON APIs and a browser page that demonstrates the provider-first flow.
+Use this when you want a zero-dependency demo server. It now serves both product APIs and operational APIs, including refresh history and provider runtime state.
 
 ### `references/operations.md`
 

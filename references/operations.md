@@ -20,6 +20,12 @@ Support these actions on day one:
 - trigger manual refresh
 - inspect sync history
 
+The starter runtime now includes:
+
+- full refresh runs
+- provider-scoped refresh runs
+- per-provider runtime summaries in a JSON state file
+
 ## Alerts
 
 Alert when:

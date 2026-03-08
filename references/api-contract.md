@@ -9,8 +9,11 @@ The bundled demo server implements the read-only portion of this contract:
 - `GET /api/providers`
 - `GET /api/providers/:providerId/setup`
 - `GET /api/providers/:providerId/models`
+- `GET /api/providers/:providerId/runtime`
 - `GET /api/catalog/meta`
+- `GET /api/operations/refresh-runs`
 - `POST /api/refresh`
+- `POST /api/providers/:providerId/refresh`
 
 ## Recommended endpoints or tools
 
@@ -123,6 +126,40 @@ Suggested fields:
 - `added`
 - `changed`
 - `missing`
+
+The starter demo implements refresh as:
+
+- `POST /api/refresh` for a full sync
+- `POST /api/providers/:providerId/refresh` for a provider-scoped sync that merges the refreshed provider back into the full catalog
+
+## Runtime status endpoints
+
+### `getProviderRuntime(providerId)`
+
+Return the latest operational state for a provider.
+
+Suggested fields:
+
+- `providerId`
+- `lastRefreshRunId`
+- `lastRefreshScope`
+- `lastRefreshStatus`
+- `lastRefreshAt`
+- `lastSuccessfulRefreshAt`
+- `lastKnownGeneratedAt`
+- `lastKnownModelCount`
+- `lastKnownLatestCount`
+- `lastKnownRecommendedCount`
+- `lastAvailabilitySource`
+
+### `listRefreshRuns()`
+
+Return recent refresh history for auditing and debugging.
+
+Suggested filters:
+
+- `providerId`
+- `limit`
 
 ## UI guidance
 
