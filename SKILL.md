@@ -19,6 +19,7 @@ Start by copying these resources:
 - `assets/provider-registry.template.json`
 - `assets/catalog-overrides.template.json`
 - `assets/model-catalog.schema.json`
+- `assets/starter-api/modelCatalogService.mjs`
 
 Run the bootstrap script to generate a provider-first public catalog:
 
@@ -165,6 +166,10 @@ Load this when you want to borrow proven interaction patterns from OpenCode, Ope
 ### `references/api-contract.md`
 
 Load this when exposing provider and model data to a frontend, agent tool, or backend integration.
+
+### `assets/starter-api/modelCatalogService.mjs`
+
+Copy this when you want a minimal Node service wrapper around the generated catalog. It exposes `listProviders`, `getProviderSetup`, and `listModels` without forcing your product code to parse the catalog shape directly.
 
 ### `references/operations.md`
 
