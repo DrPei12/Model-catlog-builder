@@ -87,7 +87,7 @@ npm run example:next:build
 npm run example:next:dev
 ```
 
-The example app mounts the shared starter API through the Next.js route adapter and demonstrates the provider picker, auth form, runtime status, and normalized model list in one place.
+The example app mounts the shared starter API through the Next.js route adapter and demonstrates both a landing page and an `/admin` console for provider setup, runtime status, model routing, and recent operations.
 The example currently uses `--webpack` for Next scripts because this repo layout is more reliable there than with Turbopack when resolving the local starter package.
 
 The script is a bootstrap layer, not the final production sync. For enabled providers in production, add official model-list sync and keep public catalogs as fallbacks.
@@ -311,7 +311,7 @@ Use this when you want a zero-dependency demo server. It now reuses `createStart
 
 ### `scripts/create-model-catalog-app.mjs`
 
-Use this when you want to hand a developer a one-command bootstrap path. It generates a standalone Next.js app with local starter-api files, sync scripts, provider and rule templates, an OpenClaw-style model routing config, and an initial generated catalog. It also supports product presets for UI mode, provider mix, deploy target, multi-tenant runtime, and API auth.
+Use this when you want to hand a developer a one-command bootstrap path. It generates a standalone Next.js app with local starter-api files, sync scripts, provider and rule templates, an OpenClaw-style model routing config, an `/admin` operator console in the full template, and an initial generated catalog. It also supports product presets for UI mode, provider mix, deploy target, multi-tenant runtime, and API auth.
 
 ### `assets/starter-api/next/createNextRouteHandlers.mjs`
 

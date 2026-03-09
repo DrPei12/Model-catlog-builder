@@ -33,6 +33,45 @@ body {
   min-height: 100vh;
 }
 
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.site-shell {
+  min-height: 100vh;
+}
+
+.site-nav {
+  width: min(1320px, calc(100vw - 40px));
+  margin: 0 auto;
+  padding: 22px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.site-brand {
+  font-family: "Azeret Mono", "IBM Plex Mono", monospace;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+}
+
+.site-nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.site-nav-links a {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  padding: 10px 14px;
+  backdrop-filter: blur(18px);
+}
+
 button,
 input,
 select {
@@ -87,10 +126,44 @@ select {
   line-height: 1.65;
 }
 
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.hero-link {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-strong);
+  padding: 11px 16px;
+}
+
+.hero-link.primary {
+  background: linear-gradient(135deg, #0f766e, #115e59);
+  color: white;
+  border-color: transparent;
+}
+
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.feature-card {
+  min-height: 220px;
+}
+
 .demo-grid {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   gap: 20px;
+}
+
+.admin-grid {
+  align-items: start;
 }
 
 .sidebar-panel,
@@ -108,6 +181,10 @@ select {
   margin: 0;
   color: var(--muted);
   line-height: 1.55;
+}
+
+.single-column {
+  grid-template-columns: 1fr;
 }
 
 .provider-list {
@@ -135,6 +212,38 @@ select {
   background: rgba(233, 252, 248, 0.9);
 }
 
+.provider-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 8px;
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 0.78rem;
+  background: rgba(29, 33, 24, 0.07);
+  color: var(--muted);
+}
+
+.provider-pill.is-ok {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.provider-pill.is-idle {
+  background: rgba(29, 33, 24, 0.07);
+  color: var(--muted);
+}
+
+.provider-pill.is-warn {
+  background: rgba(180, 83, 9, 0.12);
+  color: var(--warn);
+}
+
+.provider-pill.is-error {
+  background: rgba(185, 28, 28, 0.12);
+  color: var(--danger);
+}
+
 .provider-button strong,
 .model-card strong {
   display: block;
@@ -156,6 +265,12 @@ select {
   gap: 16px;
 }
 
+.operations-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .content-top {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
@@ -165,6 +280,11 @@ select {
 .panel {
   border-radius: 24px;
   padding: 20px;
+}
+
+.inset-panel {
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: none;
 }
 
 .section-heading {
@@ -200,6 +320,10 @@ select {
 
 .controls-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.triple-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .fields-grid {
@@ -314,6 +438,22 @@ select {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.stack-list {
+  display: grid;
+  gap: 10px;
+}
+
+.stack-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: var(--panel-strong);
+}
+
 .model-card {
   border-radius: 18px;
   padding: 16px;
@@ -352,6 +492,23 @@ select {
   border: 1px dashed var(--line);
 }
 
+.table-shell {
+  overflow: auto;
+}
+
+.table-compact {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-compact th,
+.table-compact td {
+  border-bottom: 1px solid var(--line);
+  padding: 12px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
 .json-block {
   margin: 0;
   padding: 14px;
@@ -366,6 +523,8 @@ select {
 
 @media (max-width: 1080px) {
   .demo-grid,
+  .landing-grid,
+  .operations-grid,
   .content-top,
   .fields-grid,
   .status-grid,
@@ -375,8 +534,18 @@ select {
 }
 
 @media (max-width: 720px) {
+  .site-nav,
   .page-shell {
     width: min(100vw - 20px, 960px);
+  }
+
+  .site-nav {
+    padding-top: 14px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-shell {
     padding: 18px 0 28px;
   }
 

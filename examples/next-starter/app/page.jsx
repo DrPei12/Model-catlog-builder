@@ -1,4 +1,4 @@
-import { CatalogStarterDemo } from '../components/catalog-starter-demo.jsx';
+import Link from 'next/link';
 
 export default function HomePage() {
   return (
@@ -7,13 +7,46 @@ export default function HomePage() {
         <p className="eyebrow">Starter Example</p>
         <h1>Provider-first model catalog for real products</h1>
         <p className="hero-copy">
-          This example mounts the shared starter API through a Next.js route adapter, then walks through
-          the full product flow: choose provider, validate credentials, connect, refresh, and pick a
-          model from normalized groups. It also exposes an OpenClaw-inspired model routing layer so the
-          picker allowlist, primary model, and fallback chain stay editable outside the sync pipeline.
+          This example ships with both a product-facing starter flow and an operator-facing admin console.
+          The admin side lets teams manage provider connections, model routing, picker allowlists, and
+          recent operational history without editing sync scripts by hand.
         </p>
+        <div className="hero-actions">
+          <Link className="hero-link primary" href="/admin">
+            Open admin console
+          </Link>
+          <a className="hero-link" href="/api/model-catalog" target="_blank" rel="noreferrer">
+            Inspect API
+          </a>
+        </div>
       </section>
-      <CatalogStarterDemo />
+
+      <section className="landing-grid">
+        <article className="panel feature-card">
+          <p className="eyebrow">Provider management</p>
+          <h2 className="section-heading">Connect and monitor model providers</h2>
+          <p className="panel-copy">
+            Validate credentials, refresh model catalogs, and see connection state per provider from a
+            single admin surface.
+          </p>
+        </article>
+        <article className="panel feature-card">
+          <p className="eyebrow">Routing policy</p>
+          <h2 className="section-heading">Edit primary and fallback chains</h2>
+          <p className="panel-copy">
+            Use OpenClaw-style `provider/model` refs to keep picker allowlists and production defaults
+            explicit, reviewable, and safe to update.
+          </p>
+        </article>
+        <article className="panel feature-card">
+          <p className="eyebrow">Operations</p>
+          <h2 className="section-heading">Review recent runs and audit events</h2>
+          <p className="panel-copy">
+            The starter already includes refresh logs, validation history, connection inventory, and audit
+            events, so teams do not have to bolt on basic ops visibility later.
+          </p>
+        </article>
+      </section>
     </main>
   );
 }

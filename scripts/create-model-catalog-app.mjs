@@ -69,6 +69,7 @@ console.log('  npm run dev');
 
 async function scaffoldApp({ targetDir, appName, scaffoldOptions }) {
   await fs.mkdir(path.join(targetDir, 'app', 'api', 'model-catalog', '[[...route]]'), { recursive: true });
+  await fs.mkdir(path.join(targetDir, 'app', 'admin'), { recursive: true });
   await fs.mkdir(path.join(targetDir, 'assets'), { recursive: true });
   await fs.mkdir(path.join(targetDir, 'scripts'), { recursive: true });
   await fs.mkdir(path.join(targetDir, 'output'), { recursive: true });
@@ -78,6 +79,7 @@ async function scaffoldApp({ targetDir, appName, scaffoldOptions }) {
 
   if (scaffoldOptions.template === 'full') {
     await copyFile(path.join(EXAMPLE_DIR, 'app', 'page.jsx'), path.join(targetDir, 'app', 'page.jsx'));
+    await copyFile(path.join(EXAMPLE_DIR, 'app', 'admin', 'page.jsx'), path.join(targetDir, 'app', 'admin', 'page.jsx'));
     await copyDirectory(path.join(EXAMPLE_DIR, 'components'), path.join(targetDir, 'components'));
   } else {
     await fs.writeFile(path.join(targetDir, 'app', 'page.jsx'), buildApiOnlyPage(scaffoldOptions), 'utf8');
@@ -272,6 +274,7 @@ npm run dev
 ## Notes
 
 - The starter API lives in \`lib/model-catalog/\`.
+- The operator console lives at \`/admin\` in the full template.
 - Provider definitions live in \`assets/provider-registry.template.json\`.
 - Product rules live in \`assets/catalog-overrides.template.json\`.
 - OpenClaw-style model routing lives in \`assets/model-routing.config.json\`.
