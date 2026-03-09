@@ -11,6 +11,7 @@
   },
   "scripts": {
     "sync:catalog": "node scripts/sync_model_catalog.mjs",
+    "init:model-routing": "node scripts/init_model_routing_config.mjs",
     "demo": "node scripts/run_demo_server.mjs",
     "scaffold:next": "node scripts/create-model-catalog-app.mjs",
     "example:next:install": "npm install --prefix examples/next-starter",

@@ -37,3 +37,15 @@ Copy this pattern:
 - support add, hide, rename, and deployment mapping
 
 Use this when you need ongoing operator control without editing application code every time a model changes.
+
+## OpenClaw
+
+Copy this pattern:
+
+- use `provider/model` refs as the shared language across config, UI, and runtime
+- keep provider auth onboarding separate from model routing
+- drive the picker from an explicit allowlist
+- define one primary model plus a short fallback chain
+- store auth profile order as metadata while secrets live elsewhere
+
+Use this when you want model configuration to stay understandable for product and ops, not just for backend code.

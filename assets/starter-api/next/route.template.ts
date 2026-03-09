@@ -8,6 +8,7 @@ const handlers = createNextRouteHandlers({
   defaultTenantId: process.env.MODEL_CATALOG_DEFAULT_TENANT || 'default',
   apiKeys: process.env.MODEL_CATALOG_API_KEYS || '',
   catalogPath: process.env.CATALOG_PATH,
+  modelRoutingConfigPath: process.env.MODEL_ROUTING_CONFIG_PATH,
   jsonStatePath: process.env.RUNTIME_STATE_PATH,
   sqlitePath: process.env.RUNTIME_SQLITE_PATH,
   tenantsRoot: process.env.RUNTIME_TENANTS_ROOT,

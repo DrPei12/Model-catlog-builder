@@ -11,6 +11,7 @@ const ROOT_DIR = path.resolve(__dirname, '..');
 const EXAMPLE_DIR = path.join(ROOT_DIR, 'examples', 'next-starter');
 const STARTER_API_DIR = path.join(ROOT_DIR, 'assets', 'starter-api');
 const SYNC_SCRIPT = path.join(ROOT_DIR, 'scripts', 'sync_model_catalog.mjs');
+const INIT_MODEL_ROUTING_SCRIPT = path.join(ROOT_DIR, 'scripts', 'init_model_routing_config.mjs');
 const PROVIDER_REGISTRY_TEMPLATE = path.join(ROOT_DIR, 'assets', 'provider-registry.template.json');
 const CATALOG_OVERRIDES_TEMPLATE = path.join(ROOT_DIR, 'assets', 'catalog-overrides.template.json');
 const CATALOG_SCHEMA_TEMPLATE = path.join(ROOT_DIR, 'assets', 'model-catalog.schema.json');
@@ -42,6 +43,11 @@ if (!args.skipSync) {
     ['scripts/sync_model_catalog.mjs', '--providers', scaffoldOptions.providerIds.join(',')],
     { cwd: targetDir },
   );
+  await runCommand(
+    process.execPath,
+    ['scripts/init_model_routing_config.mjs', '--providers', scaffoldOptions.providerIds.join(',')],
+    { cwd: targetDir },
+  );
 }
 
 console.log(`Scaffolded ${appName} at ${targetDir}`);
@@ -57,6 +63,7 @@ if (args.skipInstall) {
 }
 if (args.skipSync) {
   console.log('  npm run sync:catalog');
+  console.log('  npm run init:model-routing');
 }
 console.log('  npm run dev');
 
@@ -97,6 +104,7 @@ async function scaffoldApp({ targetDir, appName, scaffoldOptions }) {
   await writeJson(path.join(targetDir, 'assets', 'catalog-overrides.template.json'), filteredOverrides);
   await copyFile(CATALOG_SCHEMA_TEMPLATE, path.join(targetDir, 'assets', 'model-catalog.schema.json'));
   await copyFile(SYNC_SCRIPT, path.join(targetDir, 'scripts', 'sync_model_catalog.mjs'));
+  await copyFile(INIT_MODEL_ROUTING_SCRIPT, path.join(targetDir, 'scripts', 'init_model_routing_config.mjs'));
 
   await fs.writeFile(path.join(targetDir, '.gitignore'), buildGitIgnore(), 'utf8');
   await fs.writeFile(path.join(targetDir, '.env.example'), buildEnvExample(scaffoldOptions), 'utf8');
@@ -121,6 +129,7 @@ async function scaffoldApp({ targetDir, appName, scaffoldOptions }) {
     deploy: scaffoldOptions.deploy,
     multiTenant: scaffoldOptions.multiTenant,
     apiAuth: scaffoldOptions.apiAuth,
+    modelRoutingStrategy: 'openclaw-inspired',
   });
 
   if (scaffoldOptions.deploy === 'vercel') {
@@ -163,6 +172,7 @@ function buildPackageJson(appName, scaffoldOptions) {
       build: 'next build',
       start: 'next start',
       'sync:catalog': syncCommand,
+      'init:model-routing': 'node scripts/init_model_routing_config.mjs',
     },
     dependencies: {
       next: 'latest',
@@ -183,6 +193,7 @@ const rootDir = process.cwd();
 const handlers = createNextRouteHandlers({
   rootDir,
   catalogPath: path.join(rootDir, 'output', 'model-catalog.generated.json'),
+  modelRoutingConfigPath: path.join(rootDir, 'assets', 'model-routing.config.json'),
   jsonStatePath: path.join(rootDir, 'output', 'runtime-state.json'),
   sqlitePath: path.join(rootDir, 'output', 'runtime-state.sqlite'),
   tenantsRoot: path.join(rootDir, 'output', 'tenants'),
@@ -254,6 +265,7 @@ ${scaffoldOptions.providerIds.map((providerId) => `- ${providerId}`).join('\n')}
 \`\`\`bash
 npm install
 npm run sync:catalog
+npm run init:model-routing
 npm run dev
 \`\`\`
 
@@ -262,6 +274,7 @@ npm run dev
 - The starter API lives in \`lib/model-catalog/\`.
 - Provider definitions live in \`assets/provider-registry.template.json\`.
 - Product rules live in \`assets/catalog-overrides.template.json\`.
+- OpenClaw-style model routing lives in \`assets/model-routing.config.json\`.
 - Generated catalog output is written to \`output/model-catalog.generated.json\`.
 - The sync command is already pinned to the selected provider preset.
 `;
@@ -298,6 +311,8 @@ function buildApiOnlyPage(scaffoldOptions) {
   ['GET', '/api/model-catalog/providers'],
   ['GET', '/api/model-catalog/providers/:providerId/setup'],
   ['GET', '/api/model-catalog/providers/:providerId/models'],
+  ['GET', '/api/model-catalog/config/model-routing'],
+  ['PUT', '/api/model-catalog/config/model-routing'],
   ['POST', '/api/model-catalog/providers/:providerId/validate'],
   ['POST', '/api/model-catalog/providers/:providerId/connect'],
   ['POST', '/api/model-catalog/providers/:providerId/refresh'],

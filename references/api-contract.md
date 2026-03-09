@@ -13,11 +13,13 @@ The bundled demo server implements this starter contract:
 - `GET /api/providers/:providerId/connection`
 - `GET /api/providers/:providerId/validation-runs`
 - `GET /api/providers/:providerId/audit-events`
+- `GET /api/config/model-routing`
 - `GET /api/catalog/meta`
 - `GET /api/operations/refresh-runs`
 - `GET /api/operations/validation-runs`
 - `GET /api/operations/connections`
 - `GET /api/operations/audit-events`
+- `PUT /api/config/model-routing`
 - `POST /api/providers/:providerId/validate`
 - `POST /api/providers/:providerId/connect`
 - `POST /api/providers/:providerId/rotate`
@@ -76,6 +78,7 @@ Recommended path mapping:
 - `/api/model-catalog/providers` -> `/api/providers`
 - `/api/model-catalog/providers/openai/setup` -> `/api/providers/openai/setup`
 - `/api/model-catalog/providers/openai/models` -> `/api/providers/openai/models`
+- `/api/model-catalog/config/model-routing` -> `/api/config/model-routing`
 - `/api/model-catalog/operations/refresh-runs` -> `/api/operations/refresh-runs`
 
 If the catch-all route is called without extra segments, the adapter returns the same payload as `GET /api/catalog/meta`.
@@ -175,6 +178,66 @@ Each model should include:
 - `isLatestAlias`
 - `isLatestStableRelease`
 - `pinnedTargetModelId`
+
+### `getModelRoutingConfig()`
+
+Return the editable routing rules that drive the picker allowlist and runtime fallback chain.
+
+This starter follows the OpenClaw pattern:
+
+- `agents.defaults.models` is the picker allowlist
+- `agents.defaults.model.primary` is the production default
+- `agents.defaults.model.fallbacks` is the fallback chain
+- `auth.profiles` and `auth.order` store metadata only
+
+Suggested response fields:
+
+- `config`
+- `summary.primaryRef`
+- `summary.primary`
+- `summary.fallbackRefs`
+- `summary.fallbacks`
+- `summary.allowlistRefs`
+- `summary.allowlist`
+- `summary.unresolvedRefs`
+- `providers[]`
+
+Suggested HTTP route:
+
+- `GET /api/config/model-routing`
+
+### `updateModelRoutingConfig(config)`
+
+Persist updated picker and fallback rules without touching encrypted credentials.
+
+Suggested request body:
+
+```json
+{
+  "config": {
+    "agents": {
+      "defaults": {
+        "models": ["openai/gpt-5.2", "anthropic/claude-sonnet-4-6"],
+        "model": {
+          "primary": "openai/gpt-5.2",
+          "fallbacks": ["anthropic/claude-sonnet-4-6"]
+        }
+      }
+    }
+  }
+}
+```
+
+Recommended behavior:
+
+- keep `provider/model` refs end to end
+- automatically include `primary` and `fallbacks` in the picker allowlist
+- allow unresolved refs with warnings for advanced users
+- keep auth profile order separate from credential persistence
+
+Suggested HTTP route:
+
+- `PUT /api/config/model-routing`
 
 ### `connectProvider(providerId, credentials)`
 

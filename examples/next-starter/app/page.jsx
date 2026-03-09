@@ -9,7 +9,8 @@ export default function HomePage() {
         <p className="hero-copy">
           This example mounts the shared starter API through a Next.js route adapter, then walks through
           the full product flow: choose provider, validate credentials, connect, refresh, and pick a
-          model from normalized groups.
+          model from normalized groups. It also exposes an OpenClaw-inspired model routing layer so the
+          picker allowlist, primary model, and fallback chain stay editable outside the sync pipeline.
         </p>
       </section>
       <CatalogStarterDemo />

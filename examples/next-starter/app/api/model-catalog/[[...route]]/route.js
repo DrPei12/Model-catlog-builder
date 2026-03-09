@@ -8,6 +8,7 @@ const repoRoot = path.resolve(process.cwd(), '../..');
 const handlers = createNextRouteHandlers({
   rootDir: repoRoot,
   catalogPath: path.join(repoRoot, 'output', 'model-catalog.generated.json'),
+  modelRoutingConfigPath: path.join(repoRoot, 'assets', 'model-routing.config.json'),
   jsonStatePath: path.join(repoRoot, 'output', 'runtime-state.json'),
   sqlitePath: path.join(repoRoot, 'output', 'runtime-state.sqlite'),
   tenantsRoot: path.join(repoRoot, 'output', 'tenants'),

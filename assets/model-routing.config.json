@@ -1,0 +1,264 @@
+{
+  "version": 1,
+  "strategy": "openclaw-inspired",
+  "generatedAt": "2026-03-09T14:36:48.383Z",
+  "updatedAt": "2026-03-09T14:36:48.383Z",
+  "notes": [
+    "Model refs use provider/model so provider setup and model choice stay separate.",
+    "agents.defaults.models acts as the picker allowlist shown to end users.",
+    "auth.profiles and auth.order keep routing metadata only; encrypted secrets stay in the credential vault.",
+    "Primary and fallback refs should stay pinned for production stability even if the UI labels them as latest."
+  ],
+  "picker": {
+    "defaultGroup": "recommended",
+    "hidePreviewByDefault": true,
+    "hideDeprecatedByDefault": true,
+    "allowAdvancedModelRefs": true
+  },
+  "agents": {
+    "defaults": {
+      "models": [
+        "anthropic/claude-sonnet-4-6",
+        "anthropic/claude-opus-4-6",
+        "anthropic/claude-haiku-4-5-20251001",
+        "google/gemini-embedding-001",
+        "google/gemini-flash-latest",
+        "google/gemini-flash-lite-latest",
+        "google/gemini-2.5-pro",
+        "minimax/MiniMax-M2.5-highspeed",
+        "minimax/MiniMax-M2.5",
+        "minimax/MiniMax-M2",
+        "openai/gpt-5.4-pro",
+        "openai/gpt-5-mini",
+        "openai/gpt-5.3-codex",
+        "openai/gpt-5.3-codex-spark",
+        "openai/codex-mini-latest",
+        "openrouter/allenai/molmo-2-8b:free",
+        "openrouter/nvidia/nemotron-3-nano-30b-a3b:free",
+        "openrouter/featherless/qwerky-72b",
+        "openrouter/inception/mercury-2",
+        "openrouter/stepfun/step-3.5-flash:free",
+        "qwen/qwen3.5-397b-a17b",
+        "qwen/qvq-max",
+        "qwen/qwen3.5-plus",
+        "vercel-ai-gateway/zai/glm-5",
+        "vercel-ai-gateway/prime-intellect/intellect-3",
+        "vercel-ai-gateway/zai/glm-4.5-air",
+        "vercel-ai-gateway/zai/glm-4.7-flashx",
+        "vercel-ai-gateway/xiaomi/mimo-v2-flash"
+      ],
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-6",
+        "fallbacks": [
+          "google/gemini-embedding-001",
+          "minimax/MiniMax-M2.5-highspeed",
+          "openai/gpt-5.4-pro"
+        ]
+      }
+    }
+  },
+  "auth": {
+    "profiles": {
+      "anthropic": [
+        {
+          "id": "anthropic:default",
+          "label": "Default Anthropic credential",
+          "type": "api_key",
+          "providerId": "anthropic"
+        }
+      ],
+      "google": [
+        {
+          "id": "google:default",
+          "label": "Default Google Gemini credential",
+          "type": "api_key",
+          "providerId": "google"
+        }
+      ],
+      "minimax": [
+        {
+          "id": "minimax:default",
+          "label": "Default MiniMax credential",
+          "type": "api_key",
+          "providerId": "minimax"
+        }
+      ],
+      "openai": [
+        {
+          "id": "openai:default",
+          "label": "Default OpenAI credential",
+          "type": "api_key",
+          "providerId": "openai"
+        }
+      ],
+      "openrouter": [
+        {
+          "id": "openrouter:default",
+          "label": "Default OpenRouter credential",
+          "type": "api_key",
+          "providerId": "openrouter"
+        }
+      ],
+      "qwen": [
+        {
+          "id": "qwen:default",
+          "label": "Default Qwen credential",
+          "type": "api_key",
+          "providerId": "qwen"
+        }
+      ],
+      "vercel-ai-gateway": [
+        {
+          "id": "vercel-ai-gateway:default",
+          "label": "Default Vercel AI Gateway credential",
+          "type": "api_key",
+          "providerId": "vercel-ai-gateway"
+        }
+      ]
+    },
+    "order": {
+      "anthropic": [
+        "anthropic:default"
+      ],
+      "google": [
+        "google:default"
+      ],
+      "minimax": [
+        "minimax:default"
+      ],
+      "openai": [
+        "openai:default"
+      ],
+      "openrouter": [
+        "openrouter:default"
+      ],
+      "qwen": [
+        "qwen:default"
+      ],
+      "vercel-ai-gateway": [
+        "vercel-ai-gateway:default"
+      ]
+    }
+  },
+  "providers": {
+    "anthropic": {
+      "displayName": "Anthropic",
+      "selectionMode": "allowlist",
+      "pickerGroup": "recommended",
+      "allowlist": [
+        "anthropic/claude-sonnet-4-6",
+        "anthropic/claude-opus-4-6",
+        "anthropic/claude-haiku-4-5-20251001"
+      ],
+      "defaultPrimary": "anthropic/claude-sonnet-4-6",
+      "defaultFallbacks": [
+        "anthropic/claude-opus-4-6",
+        "anthropic/claude-haiku-4-5-20251001"
+      ],
+      "notes": "Edit this allowlist to control what shows up in the picker for this provider."
+    },
+    "google": {
+      "displayName": "Google Gemini",
+      "selectionMode": "allowlist",
+      "pickerGroup": "recommended",
+      "allowlist": [
+        "google/gemini-embedding-001",
+        "google/gemini-flash-latest",
+        "google/gemini-flash-lite-latest",
+        "google/gemini-2.5-pro"
+      ],
+      "defaultPrimary": "google/gemini-embedding-001",
+      "defaultFallbacks": [
+        "google/gemini-flash-latest",
+        "google/gemini-flash-lite-latest"
+      ],
+      "notes": "Edit this allowlist to control what shows up in the picker for this provider."
+    },
+    "minimax": {
+      "displayName": "MiniMax",
+      "selectionMode": "allowlist",
+      "pickerGroup": "recommended",
+      "allowlist": [
+        "minimax/MiniMax-M2.5-highspeed",
+        "minimax/MiniMax-M2.5",
+        "minimax/MiniMax-M2"
+      ],
+      "defaultPrimary": "minimax/MiniMax-M2.5-highspeed",
+      "defaultFallbacks": [
+        "minimax/MiniMax-M2.5",
+        "minimax/MiniMax-M2"
+      ],
+      "notes": "Edit this allowlist to control what shows up in the picker for this provider."
+    },
+    "openai": {
+      "displayName": "OpenAI",
+      "selectionMode": "allowlist",
+      "pickerGroup": "recommended",
+      "allowlist": [
+        "openai/gpt-5.4-pro",
+        "openai/gpt-5-mini",
+        "openai/gpt-5.3-codex",
+        "openai/gpt-5.3-codex-spark",
+        "openai/codex-mini-latest"
+      ],
+      "defaultPrimary": "openai/gpt-5.4-pro",
+      "defaultFallbacks": [
+        "openai/gpt-5-mini",
+        "openai/gpt-5.3-codex"
+      ],
+      "notes": "Edit this allowlist to control what shows up in the picker for this provider."
+    },
+    "openrouter": {
+      "displayName": "OpenRouter",
+      "selectionMode": "allowlist",
+      "pickerGroup": "recommended",
+      "allowlist": [
+        "openrouter/allenai/molmo-2-8b:free",
+        "openrouter/nvidia/nemotron-3-nano-30b-a3b:free",
+        "openrouter/featherless/qwerky-72b",
+        "openrouter/inception/mercury-2",
+        "openrouter/stepfun/step-3.5-flash:free"
+      ],
+      "defaultPrimary": "openrouter/allenai/molmo-2-8b:free",
+      "defaultFallbacks": [
+        "openrouter/nvidia/nemotron-3-nano-30b-a3b:free",
+        "openrouter/featherless/qwerky-72b"
+      ],
+      "notes": "Edit this allowlist to control what shows up in the picker for this provider."
+    },
+    "qwen": {
+      "displayName": "Qwen",
+      "selectionMode": "allowlist",
+      "pickerGroup": "recommended",
+      "allowlist": [
+        "qwen/qwen3.5-397b-a17b",
+        "qwen/qvq-max",
+        "qwen/qwen3.5-plus"
+      ],
+      "defaultPrimary": "qwen/qwen3.5-397b-a17b",
+      "defaultFallbacks": [
+        "qwen/qvq-max",
+        "qwen/qwen3.5-plus"
+      ],
+      "notes": "Edit this allowlist to control what shows up in the picker for this provider."
+    },
+    "vercel-ai-gateway": {
+      "displayName": "Vercel AI Gateway",
+      "selectionMode": "allowlist",
+      "pickerGroup": "recommended",
+      "allowlist": [
+        "vercel-ai-gateway/zai/glm-5",
+        "vercel-ai-gateway/prime-intellect/intellect-3",
+        "vercel-ai-gateway/zai/glm-4.5-air",
+        "vercel-ai-gateway/zai/glm-4.7-flashx",
+        "vercel-ai-gateway/xiaomi/mimo-v2-flash"
+      ],
+      "defaultPrimary": "vercel-ai-gateway/zai/glm-5",
+      "defaultFallbacks": [
+        "vercel-ai-gateway/prime-intellect/intellect-3",
+        "vercel-ai-gateway/zai/glm-4.5-air"
+      ],
+      "notes": "Edit this allowlist to control what shows up in the picker for this provider."
+    }
+  }
+}

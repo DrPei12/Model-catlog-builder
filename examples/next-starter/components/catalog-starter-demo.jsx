@@ -16,6 +16,12 @@ export function CatalogStarterDemo() {
   const [connectionState, setConnectionState] = useState(null);
   const [validationState, setValidationState] = useState(null);
   const [modelsState, setModelsState] = useState({ models: [], collections: {} });
+  const [modelRoutingState, setModelRoutingState] = useState(null);
+  const [routingDraft, setRoutingDraft] = useState({
+    primaryRef: '',
+    fallbackRefs: '',
+    allowlistRefs: '',
+  });
   const [credentialValues, setCredentialValues] = useState({});
   const [group, setGroup] = useState('recommended');
   const [query, setQuery] = useState('');
@@ -102,9 +108,26 @@ export function CatalogStarterDemo() {
     }
   });
 
+  const loadModelRouting = useEffectEvent(async () => {
+    try {
+      setErrorMessage('');
+      const result = await fetchJson('/api/model-catalog/config/model-routing', {
+        headers: requestHeaders,
+      });
+      setModelRoutingState(result.modelRouting || null);
+      setRoutingDraft(createRoutingDraft(result.modelRouting));
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : String(error));
+    }
+  });
+
   useEffect(() => {
     void loadProviders();
   }, [apiKey, loadProviders, tenantId]);
+
+  useEffect(() => {
+    void loadModelRouting();
+  }, [apiKey, loadModelRouting, tenantId]);
 
   useEffect(() => {
     if (!selectedProviderId) {
@@ -203,12 +226,67 @@ export function CatalogStarterDemo() {
       await Promise.all([
         loadProviderResources(selectedProviderId),
         loadModels(selectedProviderId),
+        loadModelRouting(),
       ]);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setIsBusy(false);
     }
+  }
+
+  async function saveModelRouting() {
+    setIsBusy(true);
+    try {
+      setErrorMessage('');
+      const allowlistRefs = parseRefList(routingDraft.allowlistRefs);
+      const primaryRef = routingDraft.primaryRef.trim();
+      const fallbackRefs = parseRefList(routingDraft.fallbackRefs);
+      const config = {
+        ...(modelRoutingState?.config || {}),
+        agents: {
+          ...modelRoutingState?.config?.agents,
+          defaults: {
+            ...modelRoutingState?.config?.agents?.defaults,
+            models: mergeAllowlistRefs(allowlistRefs, primaryRef, fallbackRefs),
+            model: {
+              ...modelRoutingState?.config?.agents?.defaults?.model,
+              primary: primaryRef || null,
+              fallbacks: fallbackRefs,
+            },
+          },
+        },
+      };
+      const result = await fetchJson('/api/model-catalog/config/model-routing', {
+        method: 'PUT',
+        headers: requestHeaders,
+        body: {
+          config,
+        },
+      });
+      setModelRoutingState(result.modelRouting || null);
+      setRoutingDraft(createRoutingDraft(result.modelRouting));
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  function promoteVisibleModelToPrimary() {
+    const firstVisibleModel = modelsState.models?.[0];
+    if (!selectedProviderId || !firstVisibleModel) {
+      return;
+    }
+
+    const nextPrimaryRef = `${selectedProviderId}/${firstVisibleModel.modelId}`;
+    setRoutingDraft((current) => ({
+      primaryRef: nextPrimaryRef,
+      fallbackRefs: current.primaryRef && current.primaryRef !== nextPrimaryRef
+        ? uniqueRefs([current.primaryRef, ...parseRefList(current.fallbackRefs)]).join(', ')
+        : current.fallbackRefs,
+      allowlistRefs: mergeAllowlistRefs(parseRefList(current.allowlistRefs), nextPrimaryRef).join(', '),
+    }));
   }
 
   return (
@@ -232,7 +310,7 @@ export function CatalogStarterDemo() {
               }}
             >
               <strong>{provider.displayName}</strong>
-              <span>{provider.collectionsSummary?.recommended || 0} recommended models</span>
+              <span>{provider.collections?.recommended || 0} recommended models</span>
             </button>
           ))}
         </div>
@@ -378,6 +456,108 @@ export function CatalogStarterDemo() {
           <section className="panel">
             <div className="section-row">
               <div>
+                <p className="eyebrow">Routing</p>
+                <h2 className="section-heading">OpenClaw-style model defaults</h2>
+              </div>
+              <span className="inline-code">{modelRoutingState?.summary?.allowlistRefs?.length || 0} allowlist refs</span>
+            </div>
+            <p className="panel-copy">
+              Keep the picker allowlist, primary model, and fallback chain in one editable config file instead of
+              hard-coding them into sync logic.
+            </p>
+            <div className="status-grid" style={{ marginTop: 16 }}>
+              <StatusCard
+                label="Primary"
+                value={modelRoutingState?.summary?.primaryRef || 'not-set'}
+                tone={modelRoutingState?.summary?.primaryRef ? 'ok' : 'error'}
+                note={modelRoutingState?.summary?.primary?.displayName || 'No primary model yet'}
+              />
+              <StatusCard
+                label="Fallbacks"
+                value={String(modelRoutingState?.summary?.fallbackRefs?.length || 0)}
+                note={
+                  modelRoutingState?.summary?.fallbackRefs?.length
+                    ? modelRoutingState.summary.fallbackRefs.join(', ')
+                    : 'No fallback chain yet'
+                }
+              />
+              <StatusCard
+                label="Picker allowlist"
+                value={String(modelRoutingState?.summary?.allowlistRefs?.length || 0)}
+                note={
+                  modelRoutingState?.summary?.pickerProviders?.length
+                    ? `${modelRoutingState.summary.pickerProviders.join(', ')}`
+                    : 'No providers in the allowlist yet'
+                }
+              />
+              <StatusCard
+                label="Warnings"
+                value={String(modelRoutingState?.summary?.unresolvedRefs?.length || 0)}
+                tone={modelRoutingState?.summary?.unresolvedRefs?.length ? 'error' : 'ok'}
+                note={
+                  modelRoutingState?.summary?.unresolvedRefs?.length
+                    ? modelRoutingState.summary.unresolvedRefs.join(', ')
+                    : 'All refs resolve against the current catalog'
+                }
+              />
+            </div>
+            <div className="controls-grid" style={{ marginTop: 16 }}>
+              <label className="field full">
+                <span className="field-label">Primary model ref</span>
+                <input
+                  value={routingDraft.primaryRef}
+                  onChange={(event) =>
+                    setRoutingDraft((current) => ({
+                      ...current,
+                      primaryRef: event.target.value,
+                    }))
+                  }
+                  placeholder="openai/gpt-5.2"
+                />
+                <span className="field-help">Use provider/model refs so routing stays explicit and portable.</span>
+              </label>
+              <label className="field full">
+                <span className="field-label">Fallback refs</span>
+                <input
+                  value={routingDraft.fallbackRefs}
+                  onChange={(event) =>
+                    setRoutingDraft((current) => ({
+                      ...current,
+                      fallbackRefs: event.target.value,
+                    }))
+                  }
+                  placeholder="anthropic/claude-sonnet-4-6, google/gemini-2.5-pro"
+                />
+                <span className="field-help">Comma-separated fallback order for runtime failover.</span>
+              </label>
+              <label className="field full">
+                <span className="field-label">Picker allowlist refs</span>
+                <input
+                  value={routingDraft.allowlistRefs}
+                  onChange={(event) =>
+                    setRoutingDraft((current) => ({
+                      ...current,
+                      allowlistRefs: event.target.value,
+                    }))
+                  }
+                  placeholder="openai/gpt-5.2, anthropic/claude-sonnet-4-6"
+                />
+                <span className="field-help">This controls what shows up in the user-facing picker.</span>
+              </label>
+            </div>
+            <div className="action-row" style={{ marginTop: 16 }}>
+              <button className="action-button" type="button" disabled={isBusy || !modelsState.models?.length} onClick={promoteVisibleModelToPrimary}>
+                Promote first visible model
+              </button>
+              <button className="action-button primary" type="button" disabled={isBusy} onClick={saveModelRouting}>
+                Save routing config
+              </button>
+            </div>
+          </section>
+
+          <section className="panel">
+            <div className="section-row">
+              <div>
                 <p className="eyebrow">Models</p>
                 <h2 className="section-heading">Normalized model picker</h2>
               </div>
@@ -498,4 +678,45 @@ function formatNumber(value) {
     return 'n/a';
   }
   return Intl.NumberFormat('en-US', { notation: 'compact' }).format(value);
+}
+
+function createRoutingDraft(modelRouting) {
+  return {
+    primaryRef: modelRouting?.summary?.primaryRef || '',
+    fallbackRefs: (modelRouting?.summary?.fallbackRefs || []).join(', '),
+    allowlistRefs: (modelRouting?.summary?.allowlistRefs || []).join(', '),
+  };
+}
+
+function parseRefList(value) {
+  return uniqueRefs(
+    String(value || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean),
+  );
+}
+
+function mergeAllowlistRefs(existingRefs, primaryRef, fallbackRefs = []) {
+  return uniqueRefs([
+    ...existingRefs,
+    primaryRef,
+    ...fallbackRefs,
+  ]);
+}
+
+function uniqueRefs(values) {
+  const seen = new Set();
+  const refs = [];
+
+  for (const value of values || []) {
+    const nextValue = String(value || '').trim();
+    if (!nextValue || seen.has(nextValue)) {
+      continue;
+    }
+    seen.add(nextValue);
+    refs.push(nextValue);
+  }
+
+  return refs;
 }

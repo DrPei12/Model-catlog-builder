@@ -1,5 +1,11 @@
 export { createStarterApiService } from './createStarterApiService.mjs';
 export { loadCatalog, listModels, listProviders, getProviderSetup } from './modelCatalogService.mjs';
+export {
+  createModelRoutingConfigService,
+  buildDefaultModelRoutingConfig,
+  normalizeModelRoutingConfig,
+  buildResolvedModelRouting,
+} from './modelRoutingConfigService.mjs';
 export { createNextRouteHandlers } from './next/createNextRouteHandlers.mjs';
 export { createCatalogRuntimeService } from './catalogRuntimeService.mjs';
 export { createProviderConnectionService } from './providerConnectionService.mjs';

@@ -2,6 +2,7 @@ import path from 'node:path';
 
 import { getProviderSetup, listModels, listProviders } from './modelCatalogService.mjs';
 import { createApiAccessControl } from './apiAccessControl.mjs';
+import { createModelRoutingConfigService } from './modelRoutingConfigService.mjs';
 import { createTenantRuntimeServiceManager } from './tenantRuntimeServiceManager.mjs';
 import { validateProviderCredentials } from './validateProviderCredentials.mjs';
 
@@ -12,6 +13,9 @@ export async function createStarterApiService(options = {}) {
   const catalogPath = path.resolve(options.catalogPath || path.join(rootDir, 'output', 'model-catalog.generated.json'));
   const jsonStatePath = path.resolve(options.jsonStatePath || options.statePath || path.join(rootDir, 'output', 'runtime-state.json'));
   const sqlitePath = path.resolve(options.sqlitePath || path.join(rootDir, 'output', 'runtime-state.sqlite'));
+  const modelRoutingConfigPath = path.resolve(
+    options.modelRoutingConfigPath || path.join(rootDir, 'assets', 'model-routing.config.json'),
+  );
   const storageMode = options.storageMode || 'auto';
   const effectiveEncryptionSecret =
     options.encryptionSecret ||
@@ -46,16 +50,23 @@ export async function createStarterApiService(options = {}) {
 
   const defaultTenantServices = await tenantManager.getTenantServices(options.defaultTenantId || 'default');
   let catalog = await defaultTenantServices.runtimeService.loadCatalog();
+  const modelRoutingService = createModelRoutingConfigService({
+    rootDir,
+    configPath: modelRoutingConfigPath,
+    loadCatalog: async () => catalog,
+  });
 
   return {
     getCatalog: () => catalog,
     describe: () => ({
       catalogPath,
+      modelRoutingConfigPath,
       accessControl: accessControl.describe(),
       tenantServices: tenantManager.describe(),
       defaultTenant: defaultTenantServices.tenantId,
       runtimeStore: defaultTenantServices.runtimeStore,
       credentialVault: defaultTenantServices.credentialVault,
+      modelRouting: modelRoutingService.describe(),
     }),
     close: () => tenantManager.closeAll(),
     handleApiRequest: async (requestLike) => {
@@ -80,14 +91,30 @@ export async function createStarterApiService(options = {}) {
       const body = requestLike.body || {};
 
       if (method === 'GET' && pathname === '/api/catalog/meta') {
+        const modelRouting = await modelRoutingService.loadModelRouting();
         return ok({
           tenantId: requestContext.tenantId,
           generatedAt: catalog?.generatedAt || null,
           sourceStatus: catalog?.sourceStatus || {},
           runtimeStore: tenantServices.runtimeService.getPersistenceInfo(),
           credentialVault: tenantServices.connectionService.getVaultInfo(),
+          modelRouting,
           accessControl: accessControl.describe(),
           tenantServices: tenantManager.describe(),
+        });
+      }
+
+      if (method === 'GET' && pathname === '/api/config/model-routing') {
+        return ok({
+          tenantId: requestContext.tenantId,
+          modelRouting: await modelRoutingService.loadModelRouting(),
+        });
+      }
+
+      if (method === 'PUT' && pathname === '/api/config/model-routing') {
+        return ok({
+          tenantId: requestContext.tenantId,
+          modelRouting: await modelRoutingService.saveModelRouting(body?.config || body?.modelRouting || body),
         });
       }
 

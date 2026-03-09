@@ -7,11 +7,12 @@ description: Build, refactor, or review provider-first LLM model catalogs and mo
 
 ## Quick Start
 
-Treat model selection as a product system, not as a prompt engineering problem. Split the work into four layers:
+Treat model selection as a product system, not as a prompt engineering problem. Split the work into five layers:
 
 - `provider registry`: the list of providers, auth methods, and setup forms
 - `catalog sync`: the normalized model directory built from official or public sources
 - `rules and overrides`: tags such as recommended, latest, preview, hidden, and pinned aliases
+- `model routing config`: OpenClaw-style picker allowlists, primary model refs, fallbacks, and auth profile order
 - `APIs and UI`: provider picker, auth form, model list, and admin maintenance tools
 
 Start by copying these resources:
@@ -19,6 +20,7 @@ Start by copying these resources:
 - `assets/provider-registry.template.json`
 - `assets/catalog-overrides.template.json`
 - `assets/model-catalog.schema.json`
+- `scripts/init_model_routing_config.mjs`
 - `assets/starter-api/modelCatalogService.mjs`
 
 Run the bootstrap script to generate a provider-first public catalog:
@@ -28,6 +30,12 @@ npm run sync:catalog -- \
   --output output/model-catalog.generated.json \
   --registry assets/provider-registry.template.json \
   --overrides assets/catalog-overrides.template.json
+```
+
+Then generate the OpenClaw-style routing config:
+
+```bash
+npm run init:model-routing -- --providers openai,anthropic,google
 ```
 
 Start the interactive demo server:
@@ -168,6 +176,8 @@ Expose a stable API surface for the frontend and agent layer:
 - `disconnectProvider(providerId)`
 - `listModels(providerId, filters)`
 - `refreshProviderModels(providerId)`
+- `getModelRoutingConfig()`
+- `updateModelRoutingConfig(config)`
 
 The frontend should never infer auth forms or latest models by itself.
 If you need production-style isolation, scope runtime state per tenant instead of sharing one state file across every user.
@@ -183,6 +193,17 @@ Default interaction:
 3. Choose model from `recommended`, `latest`, and `all`
 
 Hide deprecated models by default. Label preview models clearly. Keep an advanced path for power users who need raw model IDs or custom compatible endpoints.
+
+### 5.5 Add a model routing layer instead of hard-coded defaults
+
+Borrow this directly from OpenClaw:
+
+- `agents.defaults.models` controls the picker allowlist
+- `agents.defaults.model.primary` defines the production default
+- `agents.defaults.model.fallbacks` defines fallback order
+- `auth.profiles` and `auth.order` stay metadata-only
+
+That keeps model configuration editable without mixing it into sync code or encrypted credential storage.
 
 ### 6. Add maintenance paths on day one
 
@@ -204,6 +225,10 @@ At minimum, support:
 
 Use this to bootstrap a normalized public catalog from `models.dev`, `OpenRouter`, `Vercel AI Gateway`, and `LiteLLM`. It is useful for scaffolding and for filling metadata gaps. Replace or augment it with official provider sync for providers that your users can authenticate against directly.
 
+### `scripts/init_model_routing_config.mjs`
+
+Use this after catalog sync when you want an OpenClaw-style routing file generated from the current provider set. It builds `provider/model` allowlists, a primary model ref, a short fallback chain, and default auth profile order metadata.
+
 ### `references/architecture.md`
 
 Load this when designing tables, services, API routes, or the agent tool surface.
@@ -218,7 +243,7 @@ Load this when building the provider picker, auth forms, or model selection view
 
 ### `references/product-patterns.md`
 
-Load this when you want to borrow proven interaction patterns from OpenCode, Open WebUI, OpenHands, or LobeChat.
+Load this when you want to borrow proven interaction patterns from OpenCode, Open WebUI, OpenHands, LobeChat, or OpenClaw.
 
 ### `references/api-contract.md`
 
@@ -260,6 +285,10 @@ Copy this when you want tenant-aware runtime state without changing every storag
 
 Copy this when you want pluggable secret storage. The starter includes an embedded adapter and a file-backed adapter, so you can prototype the contract before wiring a real secret manager.
 
+### `assets/starter-api/modelRoutingConfigService.mjs`
+
+Copy this when you want an OpenClaw-inspired routing layer for the model picker. It keeps picker allowlists, primary refs, fallback chains, and auth profile order in one editable config file without mixing that logic into catalog sync or credential storage.
+
 ### `assets/starter-api/catalogRuntimeService.mjs`
 
 Copy this when you want refresh orchestration and runtime state without wiring those concerns directly into your HTTP server. It supports full-catalog refresh, provider-scoped refresh, refresh logs, validation logs, and provider runtime summaries backed by a SQLite-first runtime store with JSON fallback.
@@ -282,7 +311,7 @@ Use this when you want a zero-dependency demo server. It now reuses `createStart
 
 ### `scripts/create-model-catalog-app.mjs`
 
-Use this when you want to hand a developer a one-command bootstrap path. It generates a standalone Next.js app with local starter-api files, sync scripts, provider and rule templates, and an initial generated catalog. It also supports product presets for UI mode, provider mix, deploy target, multi-tenant runtime, and API auth.
+Use this when you want to hand a developer a one-command bootstrap path. It generates a standalone Next.js app with local starter-api files, sync scripts, provider and rule templates, an OpenClaw-style model routing config, and an initial generated catalog. It also supports product presets for UI mode, provider mix, deploy target, multi-tenant runtime, and API auth.
 
 ### `assets/starter-api/next/createNextRouteHandlers.mjs`
 
