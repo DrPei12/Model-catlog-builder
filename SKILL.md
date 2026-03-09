@@ -44,8 +44,20 @@ If you want to embed the runtime into another app instead of using the demo serv
 - `assets/starter-api/createStarterApiService.mjs`
 - `assets/starter-api/next/createNextRouteHandlers.mjs`
 - `assets/starter-api/next/route.template.ts`
+- `examples/next-starter/`
 
 The starter API service uses the same developer-friendly fallback as the demo server: if `MODEL_CATALOG_SECRET` is not set, it falls back to a built-in development secret. That is convenient for local setup, but production deployments must provide their own secret explicitly.
+
+To try the embedded Next.js starter example from the repo root:
+
+```bash
+npm run example:next:install
+npm run example:next:build
+npm run example:next:dev
+```
+
+The example app mounts the shared starter API through the Next.js route adapter and demonstrates the provider picker, auth form, runtime status, and normalized model list in one place.
+The example currently uses `--webpack` for Next scripts because this repo layout is more reliable there than with Turbopack when resolving the local starter package.
 
 The script is a bootstrap layer, not the final production sync. For enabled providers in production, add official model-list sync and keep public catalogs as fallbacks.
 
@@ -248,6 +260,10 @@ Use this when you want a zero-dependency demo server. It now reuses `createStart
 ### `assets/starter-api/next/createNextRouteHandlers.mjs`
 
 Copy this when you want to drop the starter runtime into a Next.js App Router project. Pair it with `assets/starter-api/next/route.template.ts`, then mount the handlers in a catch-all route such as `app/api/model-catalog/[[...route]]/route.ts`.
+
+### `examples/next-starter`
+
+Copy this when you want a full example application instead of isolated snippets. It wires the shared starter API, the Next.js route adapter, and a product-style provider/model management interface into one runnable App Router project.
 
 ### `references/operations.md`
 

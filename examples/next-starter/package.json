@@ -1,0 +1,16 @@
+{
+  "name": "next-starter",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start"
+  },
+  "dependencies": {
+    "model-catlog-builder": "file:../..",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  }
+}
