@@ -273,6 +273,14 @@ function buildReadme(appName, scaffoldOptions) {
 
 This app was scaffolded from the Model Catalog Builder starter.
 
+## What you get
+
+- provider-specific auth setup
+- normalized model catalog APIs
+- OpenClaw-style model routing config
+- runtime health checks
+- ${scaffoldOptions.template === 'full' ? 'an `/admin` console for operators' : 'an API-first backend surface for your existing UI'}
+
 ## Chosen options
 
 - Template: ${scaffoldOptions.template}
@@ -294,6 +302,16 @@ npm run init:model-routing
 npm run dev
 \`\`\`
 
+## Fastest integration path
+
+If you are validating value quickly, do this first:
+
+1. connect one provider
+2. refresh its models
+3. confirm the picker can load \`recommended\` models
+4. set one primary model and one fallback in \`assets/model-routing.config.json\`
+5. verify \`/api/model-catalog/health\`
+
 ## Production notes
 
 - Use \`.env.production.example\` as the starting point for production variables.
@@ -310,6 +328,13 @@ npm run dev
 - OpenClaw-style model routing lives in \`assets/model-routing.config.json\`.
 - Generated catalog output is written to \`output/model-catalog.generated.json\`.
 - The sync command is already pinned to the selected provider preset.
+
+## Validation checklist
+
+- \`/api/model-catalog/providers\` returns providers
+- \`/api/model-catalog/config/model-routing\` returns \`provider/model\` refs
+- \`/api/model-catalog/health\` is not \`error\`
+- one provider can connect and refresh successfully
 `;
 }
 

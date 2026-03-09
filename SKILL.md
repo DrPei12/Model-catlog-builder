@@ -7,6 +7,14 @@ description: Build, refactor, or review provider-first LLM model catalogs and mo
 
 ## Quick Start
 
+What this gives a developer right now:
+
+- provider-specific setup forms
+- normalized model data
+- OpenClaw-style model routing config
+- starter APIs for provider, model, routing, runtime, and health
+- an `/admin` console in the full template
+
 Treat model selection as a product system, not as a prompt engineering problem. Split the work into five layers:
 
 - `provider registry`: the list of providers, auth methods, and setup forms
@@ -248,6 +256,10 @@ Load this when you want to borrow proven interaction patterns from OpenCode, Ope
 ### `references/api-contract.md`
 
 Load this when exposing provider and model data to a frontend, agent tool, or backend integration.
+
+### `references/integration-guide.md`
+
+Load this when the real question is "how do I import this into my AI app quickly?" It focuses on the smallest useful integration paths, what the starter can already do today, and the minimum checklist for validating its value in a real product.
 
 ### `assets/starter-api/modelCatalogService.mjs`
 

@@ -9,7 +9,9 @@ export default function HomePage() {
         <p className="hero-copy">
           This example ships with both a product-facing starter flow and an operator-facing admin console.
           The admin side lets teams manage provider connections, model routing, picker allowlists, and
-          recent operational history without editing sync scripts by hand.
+          recent operational history without editing sync scripts by hand. The intended use is simple:
+          import this package into an AI app, keep model configuration out of prompts, and ship a cleaner
+          settings experience for users.
         </p>
         <div className="hero-actions">
           <Link className="hero-link primary" href="/admin">
