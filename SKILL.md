@@ -38,6 +38,15 @@ npm run demo
 
 Then open `http://localhost:4177`.
 
+If you want to embed the runtime into another app instead of using the demo server, copy:
+
+- `assets/starter-api/index.mjs`
+- `assets/starter-api/createStarterApiService.mjs`
+- `assets/starter-api/next/createNextRouteHandlers.mjs`
+- `assets/starter-api/next/route.template.ts`
+
+The starter API service uses the same developer-friendly fallback as the demo server: if `MODEL_CATALOG_SECRET` is not set, it falls back to a built-in development secret. That is convenient for local setup, but production deployments must provide their own secret explicitly.
+
 The script is a bootstrap layer, not the final production sync. For enabled providers in production, add official model-list sync and keep public catalogs as fallbacks.
 
 If you set any of these environment variables, the script will use official provider model lists before public catalogs:
@@ -184,6 +193,14 @@ Load this when exposing provider and model data to a frontend, agent tool, or ba
 
 Copy this when you want a minimal Node service wrapper around the generated catalog. It exposes `listProviders`, `getProviderSetup`, and `listModels` without forcing your product code to parse the catalog shape directly.
 
+### `assets/starter-api/createStarterApiService.mjs`
+
+Copy this when you want one reusable API surface for Node servers, route handlers, and tests. It centralizes the provider, runtime, connection, validation, refresh, and audit endpoints so you do not duplicate routing logic across frameworks.
+
+### `assets/starter-api/index.mjs`
+
+Copy this when you want a starter-package style entry point. It re-exports the catalog loader, runtime service, connection service, validation helpers, and the Next.js adapter.
+
 ### `assets/starter-api/validateProviderCredentials.mjs`
 
 Copy this when you want a real credential validator for the production path. The current version supports `OpenAI`, `Anthropic`, `Google Gemini`, `OpenRouter`, `Vercel AI Gateway`, and `OpenAI-Compatible` endpoints, with explicit fallback messages for unsupported providers.
@@ -226,7 +243,11 @@ Copy this when you need the JSON fallback store or want a fully inspectable stat
 
 ### `scripts/run_demo_server.mjs`
 
-Use this when you want a zero-dependency demo server. It now serves both product APIs and operational APIs, including refresh history, validation history, encrypted connection management, audit history, provider runtime state, and runtime-store metadata.
+Use this when you want a zero-dependency demo server. It now reuses `createStarterApiService.mjs` and serves both product APIs and operational APIs, including refresh history, validation history, encrypted connection management, audit history, provider runtime state, and runtime-store metadata.
+
+### `assets/starter-api/next/createNextRouteHandlers.mjs`
+
+Copy this when you want to drop the starter runtime into a Next.js App Router project. Pair it with `assets/starter-api/next/route.template.ts`, then mount the handlers in a catch-all route such as `app/api/model-catalog/[[...route]]/route.ts`.
 
 ### `references/operations.md`
 

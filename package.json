@@ -3,6 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "./assets/starter-api/index.mjs",
+  "exports": {
+    ".": "./assets/starter-api/index.mjs",
+    "./starter-api": "./assets/starter-api/index.mjs",
+    "./starter-api/next": "./assets/starter-api/next/createNextRouteHandlers.mjs"
+  },
   "scripts": {
     "sync:catalog": "node scripts/sync_model_catalog.mjs",
     "demo": "node scripts/run_demo_server.mjs"

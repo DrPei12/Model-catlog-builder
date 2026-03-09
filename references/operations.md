@@ -37,6 +37,10 @@ The starter runtime now includes:
 - pluggable secret source adapters for embedded or file-backed storage
 - audit events for connect, rotate, revalidate, and disconnect actions
 - per-provider runtime summaries with both refresh and validation state
+- a shared starter API service that can be mounted in multiple frameworks
+- a Next.js App Router adapter for catch-all route integration
+
+For local development, the starter service will fall back to a built-in dev encryption secret if `MODEL_CATALOG_SECRET` is unset. Treat that as a bootstrap convenience only. Production environments should always inject a real secret and rotate it deliberately.
 
 ## Alerts
 

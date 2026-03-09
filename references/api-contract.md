@@ -26,6 +26,8 @@ The bundled demo server implements this starter contract:
 - `POST /api/providers/:providerId/refresh`
 - `DELETE /api/providers/:providerId/connection`
 
+The starter package also exposes a framework-neutral request handler through `createStarterApiService()` and a Next.js App Router adapter through `createNextRouteHandlers()`. Use those instead of re-implementing the route table.
+
 ## Recommended endpoints or tools
 
 ## Auth and tenant context
@@ -42,6 +44,41 @@ Starter behavior:
 - if no API keys are configured, the API is open and falls back to `x-tenant-id` or `default`
 - if API keys are configured, each key is mapped to one tenant
 - a tenant mismatch should return `403`
+
+## Embedding options
+
+### Shared Node service
+
+Use `createStarterApiService()` when you want a single request handler that works across:
+
+- raw `node:http`
+- integration tests
+- custom Express or Fastify adapters
+- internal agent tools
+
+It expects a normalized request-like object:
+
+- `method`
+- `pathname`
+- `searchParams`
+- `headers`
+- `body`
+- `remoteAddress`
+
+### Next.js App Router
+
+Use `createNextRouteHandlers()` when you want a drop-in adapter for a catch-all route such as:
+
+- `app/api/model-catalog/[[...route]]/route.ts`
+
+Recommended path mapping:
+
+- `/api/model-catalog/providers` -> `/api/providers`
+- `/api/model-catalog/providers/openai/setup` -> `/api/providers/openai/setup`
+- `/api/model-catalog/providers/openai/models` -> `/api/providers/openai/models`
+- `/api/model-catalog/operations/refresh-runs` -> `/api/operations/refresh-runs`
+
+If the catch-all route is called without extra segments, the adapter returns the same payload as `GET /api/catalog/meta`.
 
 ### `listProviders()`
 
