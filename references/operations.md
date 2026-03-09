@@ -20,6 +20,7 @@ Support these actions on day one:
 - mark recommended
 - pin an alias to a runtime ID
 - connect a provider with encrypted credential storage
+- rotate stored credentials without exposing plaintext values
 - revalidate a stored connection
 - disconnect a provider and keep the audit trail
 - trigger manual refresh
@@ -33,6 +34,7 @@ The starter runtime now includes:
 - provider-scoped refresh runs
 - validation runs
 - encrypted provider connection records
+- pluggable secret source adapters for embedded or file-backed storage
 - audit events for connect, rotate, revalidate, and disconnect actions
 - per-provider runtime summaries with both refresh and validation state
 

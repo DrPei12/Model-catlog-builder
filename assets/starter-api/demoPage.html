@@ -298,8 +298,8 @@
           <p>
             This starter shows the full flow: select a provider, inspect the auth
             form, validate credentials, store an encrypted connection, inspect
-            normalized models, and review refresh, validation, and audit history
-            from the runtime store.
+            normalized models, rotate stored credentials, and review refresh,
+            validation, and audit history from the runtime store.
           </p>
         </div>
         <div class="toolbar">
@@ -332,6 +332,7 @@
               <div class="toolbar">
                 <button id="validateButton">Validate credentials</button>
                 <button id="connectButton">Connect and save</button>
+                <button id="rotateButton">Rotate stored credentials</button>
                 <button id="revalidateButton">Revalidate stored connection</button>
                 <button id="disconnectButton">Disconnect provider</button>
                 <button id="providerRefreshButton">Refresh selected provider</button>
@@ -419,6 +420,7 @@
       const apiKeyInputEl = document.getElementById('apiKeyInput');
       const validateButtonEl = document.getElementById('validateButton');
       const connectButtonEl = document.getElementById('connectButton');
+      const rotateButtonEl = document.getElementById('rotateButton');
       const revalidateButtonEl = document.getElementById('revalidateButton');
       const disconnectButtonEl = document.getElementById('disconnectButton');
       const providerRefreshButtonEl = document.getElementById('providerRefreshButton');
@@ -437,6 +439,7 @@
       auditHistoryButtonEl.addEventListener('click', showAuditHistory);
       validateButtonEl.addEventListener('click', validateCredentials);
       connectButtonEl.addEventListener('click', connectProvider);
+      rotateButtonEl.addEventListener('click', rotateConnection);
       revalidateButtonEl.addEventListener('click', revalidateProvider);
       disconnectButtonEl.addEventListener('click', disconnectProvider);
       providerRefreshButtonEl.addEventListener('click', refreshSelectedProvider);
@@ -690,6 +693,40 @@
           setStatus(payload.ok ? 'Connection saved.' : payload.errorMessage || 'Connect failed.', payload.ok ? '' : 'warn');
         } finally {
           connectButtonEl.disabled = false;
+        }
+      }
+
+      async function rotateConnection() {
+        if (!state.selectedProviderId) {
+          return;
+        }
+
+        const credentials = providerForms.get(state.selectedProviderId) || {};
+
+        try {
+          rotateButtonEl.disabled = true;
+          const payload = await fetchJson(`/api/providers/${encodeURIComponent(state.selectedProviderId)}/rotate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              credentials,
+              actor: {
+                type: 'demo-user',
+                id: 'browser-ui',
+              },
+            }),
+          });
+
+          validationOutputEl.textContent = JSON.stringify(payload.validation || payload, null, 2);
+          connectionOutputEl.textContent = JSON.stringify(payload.connection || {}, null, 2);
+          await renderRuntimeState();
+          await renderValidationHistory();
+          await renderAuditHistory();
+          setStatus(payload.ok ? 'Stored credentials rotated.' : payload.errorMessage || 'Rotate failed.', payload.ok ? '' : 'warn');
+        } finally {
+          rotateButtonEl.disabled = false;
         }
       }
 

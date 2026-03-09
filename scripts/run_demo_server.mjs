@@ -23,6 +23,8 @@ const DEFAULT_JSON_STATE_PATH = path.resolve(process.env.RUNTIME_STATE_PATH || p
 const DEFAULT_SQLITE_PATH = path.resolve(process.env.RUNTIME_SQLITE_PATH || path.join(ROOT_DIR, 'output', 'runtime-state.sqlite'));
 const DEFAULT_STORAGE_MODE = process.env.RUNTIME_STORAGE_MODE || 'auto';
 const DEFAULT_ENCRYPTION_SECRET = process.env.MODEL_CATALOG_SECRET || 'model-catlog-builder-dev-secret';
+const DEFAULT_SECRET_SOURCE_TYPE = process.env.MODEL_CATALOG_SECRET_SOURCE || 'embedded';
+const DEFAULT_SECRET_SOURCE_ROOT = path.resolve(process.env.MODEL_CATALOG_SECRET_FILE_ROOT || path.join(ROOT_DIR, 'output', 'secret-store'));
 const DEFAULT_TENANTS_ROOT = path.resolve(process.env.RUNTIME_TENANTS_ROOT || path.join(ROOT_DIR, 'output', 'tenants'));
 const DEFAULT_TENANT_ID = (process.env.MODEL_CATALOG_DEFAULT_TENANT || 'default').trim().toLowerCase();
 const SYNC_SCRIPT_PATH = path.join(ROOT_DIR, 'scripts', 'sync_model_catalog.mjs');
@@ -35,6 +37,8 @@ export async function startDemoServer(options = {}) {
   const sqlitePath = path.resolve(options.sqlitePath || DEFAULT_SQLITE_PATH);
   const storageMode = options.storageMode || DEFAULT_STORAGE_MODE;
   const encryptionSecret = options.encryptionSecret || DEFAULT_ENCRYPTION_SECRET;
+  const secretSourceType = options.secretSourceType || DEFAULT_SECRET_SOURCE_TYPE;
+  const secretSourceRoot = path.resolve(options.secretSourceRoot || DEFAULT_SECRET_SOURCE_ROOT);
   const accessControl = createApiAccessControl({
     defaultTenantId: options.defaultTenantId || DEFAULT_TENANT_ID,
     apiKeys: options.apiKeys,
@@ -55,6 +59,8 @@ export async function startDemoServer(options = {}) {
         ? 'env'
         : 'default-dev-secret',
     usesDefaultSecret: !options.encryptionSecret && !process.env.MODEL_CATALOG_SECRET,
+    secretSourceType,
+    secretSourceRoot,
   });
 
   const defaultTenantServices = await tenantManager.getTenantServices(options.defaultTenantId || DEFAULT_TENANT_ID);
@@ -216,6 +222,22 @@ export async function startDemoServer(options = {}) {
         return sendJson(response, result.ok ? 200 : 400, result);
       }
 
+      const providerRotateMatch = url.pathname.match(/^\/api\/providers\/([^/]+)\/rotate$/);
+      if (request.method === 'POST' && providerRotateMatch) {
+        const providerId = decodeURIComponent(providerRotateMatch[1]);
+        const providerSetup = getProviderSetup(catalog, providerId);
+        if (!providerSetup) {
+          return sendJson(response, 404, { error: 'provider_not_found' });
+        }
+        const body = await readJsonBody(request);
+        const result = await tenantServices.connectionService.rotateProviderCredentials(
+          providerSetup,
+          body?.credentials || {},
+          body?.actor || createDemoActor(requestContext),
+        );
+        return sendJson(response, result.ok ? 200 : 400, result);
+      }
+
       const providerRevalidateMatch = url.pathname.match(/^\/api\/providers\/([^/]+)\/revalidate$/);
       if (request.method === 'POST' && providerRevalidateMatch) {
         const providerId = decodeURIComponent(providerRevalidateMatch[1]);
@@ -322,6 +344,8 @@ export async function startDemoServer(options = {}) {
     credentialVault: defaultTenantServices.credentialVault,
     accessControl: accessControl.describe(),
     tenantServices: tenantManager.describe(),
+    secretSourceType,
+    secretSourceRoot,
     getCatalog: () => catalog,
   };
 }

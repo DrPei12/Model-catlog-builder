@@ -119,6 +119,7 @@ Expose a stable API surface for the frontend and agent layer:
 - `getProviderSetup(providerId)`
 - `validateProviderCredentials(providerId, credentials)`
 - `connectProvider(providerId, credentials)`
+- `rotateProviderCredentials(providerId, credentials)`
 - `revalidateProvider(providerId)`
 - `disconnectProvider(providerId)`
 - `listModels(providerId, filters)`
@@ -202,6 +203,10 @@ Copy this when you want lightweight API-key auth and tenant resolution. The star
 ### `assets/starter-api/tenantRuntimeServiceManager.mjs`
 
 Copy this when you want tenant-aware runtime state without changing every storage schema. The starter isolates each tenant into its own runtime-state files while sharing the normalized model catalog.
+
+### `assets/starter-api/secretSourceAdapters.mjs`
+
+Copy this when you want pluggable secret storage. The starter includes an embedded adapter and a file-backed adapter, so you can prototype the contract before wiring a real secret manager.
 
 ### `assets/starter-api/catalogRuntimeService.mjs`
 

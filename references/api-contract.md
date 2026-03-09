@@ -20,6 +20,7 @@ The bundled demo server implements this starter contract:
 - `GET /api/operations/audit-events`
 - `POST /api/providers/:providerId/validate`
 - `POST /api/providers/:providerId/connect`
+- `POST /api/providers/:providerId/rotate`
 - `POST /api/providers/:providerId/revalidate`
 - `POST /api/refresh`
 - `POST /api/providers/:providerId/refresh`
@@ -152,6 +153,20 @@ Suggested fields:
 
 Credentials should be encrypted before persistence. The response should never return plaintext secrets.
 
+### `rotateProviderCredentials(providerId, credentials)`
+
+Validate a replacement credential set, persist it through the configured secret source, and emit a rotation audit event.
+
+Suggested fields:
+
+- `ok`
+- `providerId`
+- `validation`
+- `connection`
+- `auditEvent`
+
+Rotation should fail if there is no existing connection to rotate.
+
 ### `revalidateProvider(providerId)`
 
 Load the stored credentials, validate them again, and update runtime plus connection state.
@@ -283,6 +298,8 @@ Suggested fields:
 - `accessControl.tenants`
 - `tenantServices.tenantsRoot`
 - `tenantServices.cachedTenants`
+- `tenantServices.secretSourceType`
+- `tenantServices.secretSourceRoot`
 
 ## UI guidance
 

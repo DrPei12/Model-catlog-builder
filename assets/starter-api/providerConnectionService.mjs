@@ -1,4 +1,5 @@
 import { createCredentialVault, summarizeCredentials } from './credentialVault.mjs';
+import { createSecretSourceAdapter } from './secretSourceAdapters.mjs';
 import { validateProviderCredentials } from './validateProviderCredentials.mjs';
 
 export function createProviderConnectionService(options = {}) {
@@ -16,6 +17,12 @@ export function createProviderConnectionService(options = {}) {
   const validationOptions = options.validationOptions || {};
   const secretSource = options.secretSource || 'explicit';
   const usesDefaultSecret = Boolean(options.usesDefaultSecret);
+  const secretAdapter = createSecretSourceAdapter({
+    type: options.secretSourceType || 'embedded',
+    rootDir: options.secretSourceRoot,
+    tenantId: options.tenantId || 'default',
+    vault,
+  });
 
   return {
     getVaultInfo: () => ({
@@ -23,6 +30,7 @@ export function createProviderConnectionService(options = {}) {
       keyVersion: vault.keyVersion,
       secretSource,
       usesDefaultSecret,
+      secretAdapter: secretAdapter.describe(),
     }),
     listConnections: async () => {
       const records = await runtimeService.listConnections();
@@ -33,79 +41,30 @@ export function createProviderConnectionService(options = {}) {
       return sanitizeConnectionRecord(record);
     },
     getAuditEvents: (query) => runtimeService.getAuditEvents(query),
-    connectProvider: async (providerSetup, credentials = {}, actor = null) => {
-      const actorInfo = normalizeActor(actor);
-      const credentialSummary = summarizeCredentials(providerSetup?.auth?.fields || [], credentials);
-      const validationResult = await validator(providerSetup, credentials, validationOptions);
-      const persistedValidation = await runtimeService.recordValidationRun(validationResult);
-
-      if (!persistedValidation.ok) {
-        const auditEvent = await runtimeService.recordAuditEvent({
-          providerId: providerSetup.providerId,
-          action: 'connect',
-          actorType: actorInfo.actorType,
-          actorId: actorInfo.actorId,
-          ok: false,
-          details: {
-            reason: persistedValidation.errorCode || 'validation_failed',
-            validationId: persistedValidation.validationId,
-            credentialSummary,
-          },
-        });
-
-        return {
-          ok: false,
-          providerId: providerSetup.providerId,
-          validation: persistedValidation,
-          connection: sanitizeConnectionRecord(await runtimeService.getConnection(providerSetup.providerId)),
-          auditEvent,
-        };
-      }
-
-      const existing = await runtimeService.getConnection(providerSetup.providerId);
-      const now = new Date().toISOString();
-      const encryptedCredentials = vault.encrypt(credentials);
-      const connectionRecord = await runtimeService.upsertConnection({
-        providerId: providerSetup.providerId,
-        status: 'connected',
-        encryptedCredentials,
-        credentialSummary,
-        keyVersion: vault.keyVersion,
-        updatedAt: now,
-        lastConnectedAt: now,
-        lastRotatedAt: now,
-        lastValidatedAt: persistedValidation.checkedAt,
-        lastValidationOk: persistedValidation.ok,
-        lastValidationErrorCode: persistedValidation.errorCode || null,
-        lastValidationErrorMessage: persistedValidation.errorMessage || null,
-        lastValidationStatus: persistedValidation.status ?? null,
-        metadata: {
-          authStrategy: providerSetup?.auth?.strategy || null,
-          fieldIds: Object.keys(credentialSummary),
-          lastActor: actorInfo,
-        },
-      });
-
-      const auditEvent = await runtimeService.recordAuditEvent({
-        providerId: providerSetup.providerId,
-        action: existing ? 'rotate_credentials' : 'connect',
-        actorType: actorInfo.actorType,
-        actorId: actorInfo.actorId,
-        ok: true,
-        details: {
-          validationId: persistedValidation.validationId,
-          credentialSummary,
-        },
-      });
-
-      return {
-        ok: true,
-        providerId: providerSetup.providerId,
-        validation: persistedValidation,
-        connection: sanitizeConnectionRecord(connectionRecord),
-        auditEvent,
-      };
-    },
+    connectProvider: async (providerSetup, credentials = {}, actor = null) =>
+      persistConnection({
+        runtimeService,
+        secretAdapter,
+        validator,
+        validationOptions,
+        vault,
+        providerSetup,
+        credentials,
+        actor,
+        requireExisting: false,
+      }),
+    rotateProviderCredentials: async (providerSetup, credentials = {}, actor = null) =>
+      persistConnection({
+        runtimeService,
+        secretAdapter,
+        validator,
+        validationOptions,
+        vault,
+        providerSetup,
+        credentials,
+        actor,
+        requireExisting: true,
+      }),
     revalidateProvider: async (providerSetup, actor = null) => {
       const actorInfo = normalizeActor(actor);
       const existing = await runtimeService.getConnection(providerSetup.providerId);
@@ -130,7 +89,11 @@ export function createProviderConnectionService(options = {}) {
         };
       }
 
-      const credentials = vault.decrypt(existing.encryptedCredentials);
+      const credentials = await secretAdapter.loadSecret({
+        providerId: providerSetup.providerId,
+        storedSecret: existing.encryptedCredentials,
+        connection: existing,
+      });
       const validationResult = await validator(providerSetup, credentials, validationOptions);
       const persistedValidation = await runtimeService.recordValidationRun(validationResult);
       const now = new Date().toISOString();
@@ -147,6 +110,7 @@ export function createProviderConnectionService(options = {}) {
         metadata: {
           ...(existing.metadata || {}),
           lastActor: actorInfo,
+          secretSource: existing.metadata?.secretSource || secretAdapter.describeStoredSecret(existing.encryptedCredentials),
         },
       });
 
@@ -159,6 +123,7 @@ export function createProviderConnectionService(options = {}) {
         details: {
           validationId: persistedValidation.validationId,
           credentialSummary: existing.credentialSummary || {},
+          secretSource: nextRecord.metadata?.secretSource || null,
         },
       });
 
@@ -172,24 +137,33 @@ export function createProviderConnectionService(options = {}) {
     },
     disconnectProvider: async (providerId, actor = null) => {
       const actorInfo = normalizeActor(actor);
-      const existing = await runtimeService.deleteConnection(providerId);
+      const existing = await runtimeService.getConnection(providerId);
+      if (existing?.encryptedCredentials) {
+        await secretAdapter.deleteSecret({
+          providerId,
+          storedSecret: existing.encryptedCredentials,
+          connection: existing,
+        });
+      }
 
+      const deleted = await runtimeService.deleteConnection(providerId);
       const auditEvent = await runtimeService.recordAuditEvent({
         providerId,
         action: 'disconnect',
         actorType: actorInfo.actorType,
         actorId: actorInfo.actorId,
-        ok: Boolean(existing),
-        details: existing
+        ok: Boolean(deleted),
+        details: deleted
           ? {
-              credentialSummary: existing.credentialSummary || {},
+              credentialSummary: deleted.credentialSummary || {},
+              secretSource: deleted.metadata?.secretSource || null,
             }
           : {
               reason: 'connection_not_found',
             },
       });
 
-      if (!existing) {
+      if (!deleted) {
         return {
           ok: false,
           providerId,
@@ -202,10 +176,122 @@ export function createProviderConnectionService(options = {}) {
       return {
         ok: true,
         providerId,
-        connection: sanitizeConnectionRecord(existing),
+        connection: sanitizeConnectionRecord(deleted),
         auditEvent,
       };
     },
+  };
+}
+
+async function persistConnection({
+  runtimeService,
+  secretAdapter,
+  validator,
+  validationOptions,
+  vault,
+  providerSetup,
+  credentials,
+  actor,
+  requireExisting,
+}) {
+  const actorInfo = normalizeActor(actor);
+  const existing = await runtimeService.getConnection(providerSetup.providerId);
+
+  if (requireExisting && !existing) {
+    const auditEvent = await runtimeService.recordAuditEvent({
+      providerId: providerSetup.providerId,
+      action: 'rotate_credentials',
+      actorType: actorInfo.actorType,
+      actorId: actorInfo.actorId,
+      ok: false,
+      details: {
+        reason: 'connection_not_found',
+      },
+    });
+
+    return {
+      ok: false,
+      providerId: providerSetup.providerId,
+      errorCode: 'connection_not_found',
+      errorMessage: `No stored credentials were found for provider "${providerSetup.providerId}".`,
+      auditEvent,
+    };
+  }
+
+  const credentialSummary = summarizeCredentials(providerSetup?.auth?.fields || [], credentials);
+  const validationResult = await validator(providerSetup, credentials, validationOptions);
+  const persistedValidation = await runtimeService.recordValidationRun(validationResult);
+
+  if (!persistedValidation.ok) {
+    const auditEvent = await runtimeService.recordAuditEvent({
+      providerId: providerSetup.providerId,
+      action: requireExisting ? 'rotate_credentials' : 'connect',
+      actorType: actorInfo.actorType,
+      actorId: actorInfo.actorId,
+      ok: false,
+      details: {
+        reason: persistedValidation.errorCode || 'validation_failed',
+        validationId: persistedValidation.validationId,
+        credentialSummary,
+      },
+    });
+
+    return {
+      ok: false,
+      providerId: providerSetup.providerId,
+      validation: persistedValidation,
+      connection: sanitizeConnectionRecord(await runtimeService.getConnection(providerSetup.providerId)),
+      auditEvent,
+    };
+  }
+
+  const now = new Date().toISOString();
+  const storedSecret = await secretAdapter.storeSecret({
+    providerId: providerSetup.providerId,
+    credentials,
+    existingConnection: existing,
+  });
+  const connectionRecord = await runtimeService.upsertConnection({
+    providerId: providerSetup.providerId,
+    status: 'connected',
+    encryptedCredentials: storedSecret,
+    credentialSummary,
+    keyVersion: storedSecret.keyVersion || vault.keyVersion,
+    updatedAt: now,
+    lastConnectedAt: existing?.lastConnectedAt || now,
+    lastRotatedAt: now,
+    lastValidatedAt: persistedValidation.checkedAt,
+    lastValidationOk: persistedValidation.ok,
+    lastValidationErrorCode: persistedValidation.errorCode || null,
+    lastValidationErrorMessage: persistedValidation.errorMessage || null,
+    lastValidationStatus: persistedValidation.status ?? null,
+    metadata: {
+      authStrategy: providerSetup?.auth?.strategy || null,
+      fieldIds: Object.keys(credentialSummary),
+      lastActor: actorInfo,
+      secretSource: secretAdapter.describeStoredSecret(storedSecret),
+    },
+  });
+
+  const auditEvent = await runtimeService.recordAuditEvent({
+    providerId: providerSetup.providerId,
+    action: requireExisting ? 'rotate_credentials' : existing ? 'rotate_credentials' : 'connect',
+    actorType: actorInfo.actorType,
+    actorId: actorInfo.actorId,
+    ok: true,
+    details: {
+      validationId: persistedValidation.validationId,
+      credentialSummary,
+      secretSource: secretAdapter.describeStoredSecret(storedSecret),
+    },
+  });
+
+  return {
+    ok: true,
+    providerId: providerSetup.providerId,
+    validation: persistedValidation,
+    connection: sanitizeConnectionRecord(connectionRecord),
+    auditEvent,
   };
 }
 
@@ -228,6 +314,7 @@ function sanitizeConnectionRecord(record) {
     lastValidationErrorCode: record.lastValidationErrorCode || null,
     lastValidationErrorMessage: record.lastValidationErrorMessage || null,
     lastValidationStatus: record.lastValidationStatus ?? null,
+    secretSource: record.metadata?.secretSource || null,
     metadata: record.metadata || {},
   };
 }

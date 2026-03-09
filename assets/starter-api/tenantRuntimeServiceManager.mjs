@@ -44,6 +44,9 @@ export function createTenantRuntimeServiceManager(options = {}) {
         encryptionKeyVersion: options.encryptionKeyVersion || 'v1',
         secretSource: options.secretSource || 'shared',
         usesDefaultSecret: Boolean(options.usesDefaultSecret),
+        secretSourceType: options.secretSourceType || 'embedded',
+        secretSourceRoot: options.secretSourceRoot,
+        tenantId: normalizedTenantId,
       });
 
       const services = {
@@ -63,6 +66,8 @@ export function createTenantRuntimeServiceManager(options = {}) {
     describe: () => ({
       tenantsRoot,
       storageMode,
+      secretSourceType: options.secretSourceType || 'embedded',
+      secretSourceRoot: options.secretSourceRoot || null,
       cachedTenants: [...cache.keys()],
     }),
     closeAll: () => {
