@@ -44,6 +44,23 @@ To generate a standalone Next.js starter app from this repo:
 npm run scaffold:next -- ./my-model-catalog-app --name my-model-catalog-app
 ```
 
+Useful scaffold options:
+
+- `--template full` or `--template api-only`
+- `--providers global | china | minimal | all`
+- `--providers openai,anthropic,openai-compatible` for a custom provider set
+- `--deploy vercel | render | none`
+- `--multi-tenant`
+- `--api-auth`
+- `--skip-install`
+- `--skip-sync`
+
+Example:
+
+```bash
+npm run scaffold:next -- ./china-api --template api-only --providers china --deploy render --multi-tenant --api-auth
+```
+
 If you want to embed the runtime into another app instead of using the demo server, copy:
 
 - `assets/starter-api/index.mjs`
@@ -265,7 +282,7 @@ Use this when you want a zero-dependency demo server. It now reuses `createStart
 
 ### `scripts/create-model-catalog-app.mjs`
 
-Use this when you want to hand a developer a one-command bootstrap path. It generates a standalone Next.js app with local starter-api files, a provider/model management UI, sync scripts, templates, and an initial generated catalog.
+Use this when you want to hand a developer a one-command bootstrap path. It generates a standalone Next.js app with local starter-api files, sync scripts, provider and rule templates, and an initial generated catalog. It also supports product presets for UI mode, provider mix, deploy target, multi-tenant runtime, and API auth.
 
 ### `assets/starter-api/next/createNextRouteHandlers.mjs`
 
