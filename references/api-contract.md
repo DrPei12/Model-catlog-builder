@@ -13,6 +13,7 @@ The bundled demo server implements this starter contract:
 - `GET /api/providers/:providerId/connection`
 - `GET /api/providers/:providerId/validation-runs`
 - `GET /api/providers/:providerId/audit-events`
+- `GET /api/health`
 - `GET /api/config/model-routing`
 - `GET /api/catalog/meta`
 - `GET /api/operations/refresh-runs`
@@ -78,6 +79,7 @@ Recommended path mapping:
 - `/api/model-catalog/providers` -> `/api/providers`
 - `/api/model-catalog/providers/openai/setup` -> `/api/providers/openai/setup`
 - `/api/model-catalog/providers/openai/models` -> `/api/providers/openai/models`
+- `/api/model-catalog/health` -> `/api/health`
 - `/api/model-catalog/config/model-routing` -> `/api/config/model-routing`
 - `/api/model-catalog/operations/refresh-runs` -> `/api/operations/refresh-runs`
 
@@ -238,6 +240,25 @@ Recommended behavior:
 Suggested HTTP route:
 
 - `PUT /api/config/model-routing`
+
+### `getHealthStatus()`
+
+Return a deployment-friendly health payload for load balancers and platform health checks.
+
+Suggested fields:
+
+- `ok`
+- `status`
+- `checkedAt`
+- `checks.catalog`
+- `checks.routing`
+- `checks.secrets`
+- `checks.persistence`
+- `issues[]`
+
+Suggested HTTP route:
+
+- `GET /api/health`
 
 ### `connectProvider(providerId, credentials)`
 

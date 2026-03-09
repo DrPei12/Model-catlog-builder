@@ -324,3 +324,7 @@ Copy this when you want a full example application instead of isolated snippets.
 ### `references/operations.md`
 
 Load this when defining maintenance jobs, admin actions, or alerting.
+
+### `references/deployment-playbook.md`
+
+Load this when turning the starter into a deployable product environment. It explains the health endpoint, production env vars, and why Render is the safer default for the current local-persistence runtime while Vercel is better treated as preview-first unless you swap in external persistence.

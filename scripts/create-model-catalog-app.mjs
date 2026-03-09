@@ -110,6 +110,7 @@ async function scaffoldApp({ targetDir, appName, scaffoldOptions }) {
 
   await fs.writeFile(path.join(targetDir, '.gitignore'), buildGitIgnore(), 'utf8');
   await fs.writeFile(path.join(targetDir, '.env.example'), buildEnvExample(scaffoldOptions), 'utf8');
+  await fs.writeFile(path.join(targetDir, '.env.production.example'), buildEnvProductionExample(scaffoldOptions), 'utf8');
   await fs.writeFile(
     path.join(targetDir, 'package.json'),
     JSON.stringify(buildPackageJson(appName, scaffoldOptions), null, 2) + '\n',
@@ -245,6 +246,28 @@ function buildEnvExample(scaffoldOptions) {
   return `${lines.join('\n')}\n`;
 }
 
+function buildEnvProductionExample(scaffoldOptions) {
+  const lines = [
+    'NODE_ENV=production',
+    'MODEL_CATALOG_SECRET=replace-me-with-a-32-byte-secret',
+    `MODEL_CATALOG_DEFAULT_TENANT=${scaffoldOptions.multiTenant ? 'team-a' : 'default'}`,
+    'MODEL_CATALOG_SECRET_SOURCE=embedded',
+    '# MODEL_CATALOG_SECRET_FILE_ROOT=./secrets',
+    'RUNTIME_STORAGE_MODE=auto',
+    'RUNTIME_STATE_PATH=./output/runtime-state.json',
+    'RUNTIME_SQLITE_PATH=./output/runtime-state.sqlite',
+    'RUNTIME_TENANTS_ROOT=./output/tenants',
+  ];
+
+  if (scaffoldOptions.apiAuth) {
+    lines.splice(3, 0, 'MODEL_CATALOG_API_KEYS=team-a:replace-with-real-token');
+  } else {
+    lines.splice(3, 0, '# MODEL_CATALOG_API_KEYS=team-a:replace-with-real-token');
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
 function buildReadme(appName, scaffoldOptions) {
   return `# ${appName}
 
@@ -270,6 +293,13 @@ npm run sync:catalog
 npm run init:model-routing
 npm run dev
 \`\`\`
+
+## Production notes
+
+- Use \`.env.production.example\` as the starting point for production variables.
+- Health check endpoint: \`/api/model-catalog/health\`
+- Render is the recommended default when you want to keep SQLite and file-backed secrets.
+- Vercel is fine for previews or stateless demos, but production persistence needs an external runtime store and secret source.
 
 ## Notes
 
@@ -297,6 +327,7 @@ function buildRenderBlueprint(appName, scaffoldOptions) {
     name: ${appName}
     runtime: node
     plan: starter
+    healthCheckPath: /api/model-catalog/health
     buildCommand: npm install && npm run build
     startCommand: npm run start -- --hostname 0.0.0.0 --port $PORT
     envVars:

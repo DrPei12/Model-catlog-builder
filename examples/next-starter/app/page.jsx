@@ -18,6 +18,9 @@ export default function HomePage() {
           <a className="hero-link" href="/api/model-catalog" target="_blank" rel="noreferrer">
             Inspect API
           </a>
+          <a className="hero-link" href="/api/model-catalog/health" target="_blank" rel="noreferrer">
+            Health check
+          </a>
         </div>
       </section>
 

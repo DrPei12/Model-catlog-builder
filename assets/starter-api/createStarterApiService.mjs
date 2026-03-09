@@ -92,15 +92,67 @@ export async function createStarterApiService(options = {}) {
 
       if (method === 'GET' && pathname === '/api/catalog/meta') {
         const modelRouting = await modelRoutingService.loadModelRouting();
+        const runtimeStore = tenantServices.runtimeService.getPersistenceInfo();
+        const credentialVault = tenantServices.connectionService.getVaultInfo();
         return ok({
           tenantId: requestContext.tenantId,
           generatedAt: catalog?.generatedAt || null,
           sourceStatus: catalog?.sourceStatus || {},
-          runtimeStore: tenantServices.runtimeService.getPersistenceInfo(),
-          credentialVault: tenantServices.connectionService.getVaultInfo(),
+          runtimeStore,
+          credentialVault,
           modelRouting,
           accessControl: accessControl.describe(),
           tenantServices: tenantManager.describe(),
+        });
+      }
+
+      if (method === 'GET' && pathname === '/api/health') {
+        const modelRouting = await modelRoutingService.loadModelRouting();
+        const runtimeStore = tenantServices.runtimeService.getPersistenceInfo();
+        const credentialVault = tenantServices.connectionService.getVaultInfo();
+        const providerCount = (catalog?.providers || []).length;
+        const unresolvedRefs = modelRouting?.summary?.unresolvedRefs?.length || 0;
+        const issues = [];
+
+        if (providerCount === 0) {
+          issues.push('No providers are available in the current catalog.');
+        }
+        if (unresolvedRefs > 0) {
+          issues.push(`${unresolvedRefs} model routing refs do not resolve against the current catalog.`);
+        }
+        if (usesDefaultSecret) {
+          issues.push('MODEL_CATALOG_SECRET is using the built-in development default.');
+        }
+
+        const status = providerCount === 0 ? 'error' : issues.length > 0 ? 'degraded' : 'ok';
+
+        return ok({
+          ok: status !== 'error',
+          status,
+          checkedAt: new Date().toISOString(),
+          tenantId: requestContext.tenantId,
+          checks: {
+            catalog: {
+              status: providerCount === 0 ? 'error' : 'ok',
+              providerCount,
+              generatedAt: catalog?.generatedAt || null,
+            },
+            routing: {
+              status: unresolvedRefs > 0 ? 'degraded' : 'ok',
+              unresolvedRefs,
+              primaryRef: modelRouting?.summary?.primaryRef || null,
+            },
+            secrets: {
+              status: usesDefaultSecret ? 'degraded' : 'ok',
+              usesDefaultSecret,
+              vault: credentialVault,
+            },
+            persistence: {
+              status: 'ok',
+              runtimeStore,
+            },
+          },
+          issues,
         });
       }
 

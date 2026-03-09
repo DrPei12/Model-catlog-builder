@@ -39,8 +39,11 @@ The starter runtime now includes:
 - per-provider runtime summaries with both refresh and validation state
 - a shared starter API service that can be mounted in multiple frameworks
 - a Next.js App Router adapter for catch-all route integration
+- a deployment-friendly health endpoint at `/api/model-catalog/health`
 
 For local development, the starter service will fall back to a built-in dev encryption secret if `MODEL_CATALOG_SECRET` is unset. Treat that as a bootstrap convenience only. Production environments should always inject a real secret and rotate it deliberately.
+
+For production deployment, prefer platforms that can preserve local runtime files or swap the starter to an external persistence layer before launch.
 
 ## Alerts
 
