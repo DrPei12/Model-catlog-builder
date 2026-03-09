@@ -27,6 +27,21 @@ The bundled demo server implements this starter contract:
 
 ## Recommended endpoints or tools
 
+## Auth and tenant context
+
+For embeddable products, every API call should carry tenant context.
+
+Suggested transport:
+
+- `Authorization: Bearer <token>` or `x-api-key: <token>`
+- `x-tenant-id: <tenantId>`
+
+Starter behavior:
+
+- if no API keys are configured, the API is open and falls back to `x-tenant-id` or `default`
+- if API keys are configured, each key is mapped to one tenant
+- a tenant mismatch should return `403`
+
 ### `listProviders()`
 
 Return one object per provider.
@@ -264,6 +279,10 @@ Suggested fields:
 - `credentialVault.keyVersion`
 - `credentialVault.secretSource`
 - `credentialVault.usesDefaultSecret`
+- `accessControl.enabled`
+- `accessControl.tenants`
+- `tenantServices.tenantsRoot`
+- `tenantServices.cachedTenants`
 
 ## UI guidance
 

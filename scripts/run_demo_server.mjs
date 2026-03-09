@@ -10,8 +10,8 @@ import {
   listModels,
   listProviders,
 } from '../assets/starter-api/modelCatalogService.mjs';
-import { createCatalogRuntimeService } from '../assets/starter-api/catalogRuntimeService.mjs';
-import { createProviderConnectionService } from '../assets/starter-api/providerConnectionService.mjs';
+import { createApiAccessControl } from '../assets/starter-api/apiAccessControl.mjs';
+import { createTenantRuntimeServiceManager } from '../assets/starter-api/tenantRuntimeServiceManager.mjs';
 import { validateProviderCredentials } from '../assets/starter-api/validateProviderCredentials.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -23,6 +23,8 @@ const DEFAULT_JSON_STATE_PATH = path.resolve(process.env.RUNTIME_STATE_PATH || p
 const DEFAULT_SQLITE_PATH = path.resolve(process.env.RUNTIME_SQLITE_PATH || path.join(ROOT_DIR, 'output', 'runtime-state.sqlite'));
 const DEFAULT_STORAGE_MODE = process.env.RUNTIME_STORAGE_MODE || 'auto';
 const DEFAULT_ENCRYPTION_SECRET = process.env.MODEL_CATALOG_SECRET || 'model-catlog-builder-dev-secret';
+const DEFAULT_TENANTS_ROOT = path.resolve(process.env.RUNTIME_TENANTS_ROOT || path.join(ROOT_DIR, 'output', 'tenants'));
+const DEFAULT_TENANT_ID = (process.env.MODEL_CATALOG_DEFAULT_TENANT || 'default').trim().toLowerCase();
 const SYNC_SCRIPT_PATH = path.join(ROOT_DIR, 'scripts', 'sync_model_catalog.mjs');
 const DEMO_PAGE_PATH = path.join(ROOT_DIR, 'assets', 'starter-api', 'demoPage.html');
 
@@ -33,21 +35,18 @@ export async function startDemoServer(options = {}) {
   const sqlitePath = path.resolve(options.sqlitePath || DEFAULT_SQLITE_PATH);
   const storageMode = options.storageMode || DEFAULT_STORAGE_MODE;
   const encryptionSecret = options.encryptionSecret || DEFAULT_ENCRYPTION_SECRET;
-
-  const runtime = await createCatalogRuntimeService({
+  const accessControl = createApiAccessControl({
+    defaultTenantId: options.defaultTenantId || DEFAULT_TENANT_ID,
+    apiKeys: options.apiKeys,
+  });
+  const tenantManager = createTenantRuntimeServiceManager({
     rootDir: ROOT_DIR,
     catalogPath,
     jsonStatePath,
     sqlitePath,
+    tenantsRoot: options.tenantsRoot || DEFAULT_TENANTS_ROOT,
     storageMode,
     syncScriptPath: SYNC_SCRIPT_PATH,
-  });
-
-  await runtime.ensureCatalog();
-  let catalog = await runtime.loadCatalog();
-  const runtimeStore = runtime.getPersistenceInfo();
-  const connectionService = createProviderConnectionService({
-    runtimeService: runtime,
     encryptionSecret,
     encryptionKeyVersion: options.encryptionKeyVersion || 'v1',
     secretSource: options.encryptionSecret
@@ -57,6 +56,9 @@ export async function startDemoServer(options = {}) {
         : 'default-dev-secret',
     usesDefaultSecret: !options.encryptionSecret && !process.env.MODEL_CATALOG_SECRET,
   });
+
+  const defaultTenantServices = await tenantManager.getTenantServices(options.defaultTenantId || DEFAULT_TENANT_ID);
+  let catalog = await defaultTenantServices.runtimeService.loadCatalog();
 
   const server = http.createServer(async (request, response) => {
     try {
@@ -74,12 +76,26 @@ export async function startDemoServer(options = {}) {
         });
       }
 
+      let requestContext = null;
+      let tenantServices = null;
+
+      if (url.pathname.startsWith('/api/')) {
+        requestContext = accessControl.resolveRequestContext(request);
+        if (!requestContext.ok) {
+          return sendJson(response, requestContext.statusCode, requestContext.payload);
+        }
+        tenantServices = await tenantManager.getTenantServices(requestContext.tenantId);
+      }
+
       if (request.method === 'GET' && url.pathname === '/api/catalog/meta') {
         return sendJson(response, 200, {
+          tenantId: requestContext.tenantId,
           generatedAt: catalog?.generatedAt || null,
           sourceStatus: catalog?.sourceStatus || {},
-          runtimeStore,
-          credentialVault: connectionService.getVaultInfo(),
+          runtimeStore: tenantServices.runtimeService.getPersistenceInfo(),
+          credentialVault: tenantServices.connectionService.getVaultInfo(),
+          accessControl: accessControl.describe(),
+          tenantServices: tenantManager.describe(),
         });
       }
 
@@ -116,8 +132,9 @@ export async function startDemoServer(options = {}) {
         if (!providerSetup) {
           return sendJson(response, 404, { error: 'provider_not_found' });
         }
-        const runtimeState = await runtime.getProviderState(providerId);
+        const runtimeState = await tenantServices.runtimeService.getProviderState(providerId);
         return sendJson(response, 200, {
+          tenantId: requestContext.tenantId,
           providerId,
           runtime: runtimeState,
         });
@@ -130,8 +147,9 @@ export async function startDemoServer(options = {}) {
         if (!providerSetup) {
           return sendJson(response, 404, { error: 'provider_not_found' });
         }
-        const connection = await connectionService.getConnection(providerId);
+        const connection = await tenantServices.connectionService.getConnection(providerId);
         return sendJson(response, 200, {
+          tenantId: requestContext.tenantId,
           providerId,
           connection,
         });
@@ -145,8 +163,9 @@ export async function startDemoServer(options = {}) {
           return sendJson(response, 404, { error: 'provider_not_found' });
         }
         const limit = Number(url.searchParams.get('limit') || '20');
-        const auditEvents = await connectionService.getAuditEvents({ providerId, limit });
+        const auditEvents = await tenantServices.connectionService.getAuditEvents({ providerId, limit });
         return sendJson(response, 200, {
+          tenantId: requestContext.tenantId,
           providerId,
           auditEvents,
         });
@@ -160,8 +179,9 @@ export async function startDemoServer(options = {}) {
           return sendJson(response, 404, { error: 'provider_not_found' });
         }
         const limit = Number(url.searchParams.get('limit') || '20');
-        const validationRuns = await runtime.getValidationRuns({ providerId, limit });
+        const validationRuns = await tenantServices.runtimeService.getValidationRuns({ providerId, limit });
         return sendJson(response, 200, {
+          tenantId: requestContext.tenantId,
           providerId,
           validationRuns,
         });
@@ -176,7 +196,7 @@ export async function startDemoServer(options = {}) {
         }
         const body = await readJsonBody(request);
         const validationResult = await validateProviderCredentials(providerSetup, body?.credentials || {});
-        const result = await runtime.recordValidationRun(validationResult);
+        const result = await tenantServices.runtimeService.recordValidationRun(validationResult);
         return sendJson(response, 200, result);
       }
 
@@ -188,10 +208,10 @@ export async function startDemoServer(options = {}) {
           return sendJson(response, 404, { error: 'provider_not_found' });
         }
         const body = await readJsonBody(request);
-        const result = await connectionService.connectProvider(
+        const result = await tenantServices.connectionService.connectProvider(
           providerSetup,
           body?.credentials || {},
-          body?.actor || createDemoActor(request),
+          body?.actor || createDemoActor(requestContext),
         );
         return sendJson(response, result.ok ? 200 : 400, result);
       }
@@ -204,9 +224,9 @@ export async function startDemoServer(options = {}) {
           return sendJson(response, 404, { error: 'provider_not_found' });
         }
         const body = await readJsonBody(request);
-        const result = await connectionService.revalidateProvider(
+        const result = await tenantServices.connectionService.revalidateProvider(
           providerSetup,
-          body?.actor || createDemoActor(request),
+          body?.actor || createDemoActor(requestContext),
         );
         return sendJson(response, result.ok ? 200 : 400, result);
       }
@@ -218,9 +238,9 @@ export async function startDemoServer(options = {}) {
           return sendJson(response, 404, { error: 'provider_not_found' });
         }
         const body = await readJsonBody(request);
-        const result = await connectionService.disconnectProvider(
+        const result = await tenantServices.connectionService.disconnectProvider(
           providerId,
-          body?.actor || createDemoActor(request),
+          body?.actor || createDemoActor(requestContext),
         );
         return sendJson(response, result.ok ? 200 : 404, result);
       }
@@ -233,9 +253,9 @@ export async function startDemoServer(options = {}) {
           return sendJson(response, 404, { error: 'provider_not_found' });
         }
 
-        const result = await runtime.refreshProvider(providerId);
+        const result = await tenantServices.runtimeService.refreshProvider(providerId);
         if (result.ok) {
-          catalog = await runtime.loadCatalog();
+          catalog = await tenantServices.runtimeService.loadCatalog();
         }
         return sendJson(response, result.ok ? 200 : 500, result);
       }
@@ -243,33 +263,33 @@ export async function startDemoServer(options = {}) {
       if (request.method === 'GET' && url.pathname === '/api/operations/refresh-runs') {
         const providerId = url.searchParams.get('providerId') || null;
         const limit = Number(url.searchParams.get('limit') || '20');
-        const refreshRuns = await runtime.getRefreshRuns({ providerId, limit });
-        return sendJson(response, 200, { refreshRuns });
+        const refreshRuns = await tenantServices.runtimeService.getRefreshRuns({ providerId, limit });
+        return sendJson(response, 200, { tenantId: requestContext.tenantId, refreshRuns });
       }
 
       if (request.method === 'GET' && url.pathname === '/api/operations/validation-runs') {
         const providerId = url.searchParams.get('providerId') || null;
         const limit = Number(url.searchParams.get('limit') || '20');
-        const validationRuns = await runtime.getValidationRuns({ providerId, limit });
-        return sendJson(response, 200, { validationRuns });
+        const validationRuns = await tenantServices.runtimeService.getValidationRuns({ providerId, limit });
+        return sendJson(response, 200, { tenantId: requestContext.tenantId, validationRuns });
       }
 
       if (request.method === 'GET' && url.pathname === '/api/operations/connections') {
-        const connections = await connectionService.listConnections();
-        return sendJson(response, 200, { connections });
+        const connections = await tenantServices.connectionService.listConnections();
+        return sendJson(response, 200, { tenantId: requestContext.tenantId, connections });
       }
 
       if (request.method === 'GET' && url.pathname === '/api/operations/audit-events') {
         const providerId = url.searchParams.get('providerId') || null;
         const limit = Number(url.searchParams.get('limit') || '20');
-        const auditEvents = await connectionService.getAuditEvents({ providerId, limit });
-        return sendJson(response, 200, { auditEvents });
+        const auditEvents = await tenantServices.connectionService.getAuditEvents({ providerId, limit });
+        return sendJson(response, 200, { tenantId: requestContext.tenantId, auditEvents });
       }
 
       if (request.method === 'POST' && url.pathname === '/api/refresh') {
-        const result = await runtime.refreshAllProviders();
+        const result = await tenantServices.runtimeService.refreshAllProviders();
         if (result.ok) {
-          catalog = await runtime.loadCatalog();
+          catalog = await tenantServices.runtimeService.loadCatalog();
         }
         return sendJson(response, result.ok ? 200 : 500, result);
       }
@@ -288,18 +308,20 @@ export async function startDemoServer(options = {}) {
   });
 
   server.on('close', () => {
-    runtime.close?.();
+    tenantManager.closeAll();
   });
 
   return {
     server,
     port,
     catalogPath,
-    statePath: jsonStatePath,
-    jsonStatePath,
-    sqlitePath,
-    runtimeStore,
-    credentialVault: connectionService.getVaultInfo(),
+    statePath: defaultTenantServices.jsonStatePath,
+    jsonStatePath: defaultTenantServices.jsonStatePath,
+    sqlitePath: defaultTenantServices.sqlitePath,
+    runtimeStore: defaultTenantServices.runtimeStore,
+    credentialVault: defaultTenantServices.credentialVault,
+    accessControl: accessControl.describe(),
+    tenantServices: tenantManager.describe(),
     getCatalog: () => catalog,
   };
 }
@@ -369,9 +391,9 @@ async function readJsonBody(request) {
   return JSON.parse(body);
 }
 
-function createDemoActor(request) {
+function createDemoActor(requestContext) {
   return {
-    type: 'demo-user',
-    id: request.headers['x-forwarded-for'] || request.socket.remoteAddress || 'local-demo',
+    type: requestContext.actor.type,
+    id: requestContext.actor.id,
   };
 }

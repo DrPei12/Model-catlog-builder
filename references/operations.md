@@ -9,6 +9,8 @@ Use a fixed cadence.
 - weekly: review deprecations, pricing diffs, and missing models
 - monthly: clean up stale overrides and retired providers
 
+If your product is multi-tenant, keep each tenant's runtime state separate even if the normalized catalog is shared.
+
 ## Minimum admin actions
 
 Support these actions on day one:
@@ -22,6 +24,7 @@ Support these actions on day one:
 - disconnect a provider and keep the audit trail
 - trigger manual refresh
 - inspect sync history
+- resolve tenant and API auth before mutating provider state
 
 The starter runtime now includes:
 

@@ -125,6 +125,7 @@ Expose a stable API surface for the frontend and agent layer:
 - `refreshProviderModels(providerId)`
 
 The frontend should never infer auth forms or latest models by itself.
+If you need production-style isolation, scope runtime state per tenant instead of sharing one state file across every user.
 
 ### 5. Build the picker as a three-step flow
 
@@ -193,6 +194,14 @@ Copy this when you need encrypted credential storage without adding another depe
 ### `assets/starter-api/providerConnectionService.mjs`
 
 Copy this when you want a product-facing connection layer on top of runtime persistence. It handles `connect`, `revalidate`, `disconnect`, connection inventory, and audit events while keeping plaintext credentials out of API responses.
+
+### `assets/starter-api/apiAccessControl.mjs`
+
+Copy this when you want lightweight API-key auth and tenant resolution. The starter supports `Bearer` tokens or `x-api-key`, and can map each key to a tenant.
+
+### `assets/starter-api/tenantRuntimeServiceManager.mjs`
+
+Copy this when you want tenant-aware runtime state without changing every storage schema. The starter isolates each tenant into its own runtime-state files while sharing the normalized model catalog.
 
 ### `assets/starter-api/catalogRuntimeService.mjs`
 

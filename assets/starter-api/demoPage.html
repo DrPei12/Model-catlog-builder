@@ -71,6 +71,14 @@
         flex-wrap: wrap;
       }
 
+      .toolbar input {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: white;
+        padding: 10px 14px;
+        min-width: 160px;
+      }
+
       button {
         border: 1px solid var(--line);
         background: #fffdf8;
@@ -295,6 +303,8 @@
           </p>
         </div>
         <div class="toolbar">
+          <input id="tenantInput" type="text" placeholder="Tenant ID">
+          <input id="apiKeyInput" type="password" placeholder="API key (optional)">
           <button class="primary" id="refreshButton">Refresh catalog</button>
           <button id="metaButton">Show source status</button>
           <button id="historyButton">Show refresh history</button>
@@ -375,6 +385,8 @@
       const state = {
         providers: [],
         selectedProviderId: null,
+        tenantId: localStorage.getItem('modelCatalogTenantId') || 'default',
+        apiKey: localStorage.getItem('modelCatalogApiKey') || '',
       };
 
       const providerForms = new Map();
@@ -403,6 +415,8 @@
       const validationHistoryButtonEl = document.getElementById('validationHistoryButton');
       const connectionInventoryButtonEl = document.getElementById('connectionInventoryButton');
       const auditHistoryButtonEl = document.getElementById('auditHistoryButton');
+      const tenantInputEl = document.getElementById('tenantInput');
+      const apiKeyInputEl = document.getElementById('apiKeyInput');
       const validateButtonEl = document.getElementById('validateButton');
       const connectButtonEl = document.getElementById('connectButton');
       const revalidateButtonEl = document.getElementById('revalidateButton');
@@ -428,6 +442,10 @@
       providerRefreshButtonEl.addEventListener('click', refreshSelectedProvider);
       providerValidationHistoryButtonEl.addEventListener('click', renderValidationHistory);
       providerAuditButtonEl.addEventListener('click', renderAuditHistory);
+      tenantInputEl.value = state.tenantId;
+      apiKeyInputEl.value = state.apiKey;
+      tenantInputEl.addEventListener('change', handleRequestContextChange);
+      apiKeyInputEl.addEventListener('change', handleRequestContextChange);
 
       bootstrap();
 
@@ -805,7 +823,13 @@
       }
 
       async function fetchJson(url, options = {}) {
-        const response = await fetch(url, options);
+        const response = await fetch(url, {
+          ...options,
+          headers: {
+            ...buildRequestHeaders(),
+            ...(options.headers || {}),
+          },
+        });
         const payload = await response.json();
 
         if (!response.ok) {
@@ -838,6 +862,26 @@
       function setStatus(message, kind = '') {
         statusEl.textContent = message;
         statusEl.className = kind ? `status ${kind}` : 'status';
+      }
+
+      async function handleRequestContextChange() {
+        state.tenantId = tenantInputEl.value.trim() || 'default';
+        state.apiKey = apiKeyInputEl.value.trim();
+        localStorage.setItem('modelCatalogTenantId', state.tenantId);
+        localStorage.setItem('modelCatalogApiKey', state.apiKey);
+        await bootstrap(state.selectedProviderId);
+      }
+
+      function buildRequestHeaders() {
+        const headers = {
+          'x-tenant-id': state.tenantId,
+        };
+
+        if (state.apiKey) {
+          headers.Authorization = `Bearer ${state.apiKey}`;
+        }
+
+        return headers;
       }
 
       function escapeHtml(value) {
