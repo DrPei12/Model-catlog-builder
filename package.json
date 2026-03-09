@@ -12,6 +12,7 @@
   "scripts": {
     "sync:catalog": "node scripts/sync_model_catalog.mjs",
     "demo": "node scripts/run_demo_server.mjs",
+    "scaffold:next": "node scripts/create-model-catalog-app.mjs",
     "example:next:install": "npm install --prefix examples/next-starter",
     "example:next:dev": "npm run dev --prefix examples/next-starter",
     "example:next:build": "npm run build --prefix examples/next-starter"

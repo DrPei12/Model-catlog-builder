@@ -38,6 +38,12 @@ npm run demo
 
 Then open `http://localhost:4177`.
 
+To generate a standalone Next.js starter app from this repo:
+
+```bash
+npm run scaffold:next -- ./my-model-catalog-app --name my-model-catalog-app
+```
+
 If you want to embed the runtime into another app instead of using the demo server, copy:
 
 - `assets/starter-api/index.mjs`
@@ -256,6 +262,10 @@ Copy this when you need the JSON fallback store or want a fully inspectable stat
 ### `scripts/run_demo_server.mjs`
 
 Use this when you want a zero-dependency demo server. It now reuses `createStarterApiService.mjs` and serves both product APIs and operational APIs, including refresh history, validation history, encrypted connection management, audit history, provider runtime state, and runtime-store metadata.
+
+### `scripts/create-model-catalog-app.mjs`
+
+Use this when you want to hand a developer a one-command bootstrap path. It generates a standalone Next.js app with local starter-api files, a provider/model management UI, sync scripts, templates, and an initial generated catalog.
 
 ### `assets/starter-api/next/createNextRouteHandlers.mjs`
 
