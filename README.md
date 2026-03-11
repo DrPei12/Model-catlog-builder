@@ -35,21 +35,21 @@ What it is not yet:
 
 ```mermaid
 flowchart TB
-  subgraph Row1[""]
+  subgraph Row1
     direction LR
     A["1. Sync official and public<br/>model sources"] --> B["2. Build normalized<br/>model catalog"]
     B --> C["3. Show provider list<br/>in app settings"]
     C --> D["4. User chooses<br/>provider"]
   end
 
-  subgraph Row2[""]
+  subgraph Row2
     direction RL
     E["5. Show provider-specific<br/>auth form"] --> F["6. Validate or connect<br/>credentials"]
     F --> G["7. List recommended,<br/>latest, and all models"]
     G --> H["8. Set primary model<br/>and fallback chain"]
   end
 
-  subgraph Row3[""]
+  subgraph Row3
     direction LR
     I["9. Save routing config<br/>and provider connection"] --> J["10. Use the selected route<br/>in the AI application"]
     J --> K["11. Refresh from admin when<br/>models or credentials change"]
