@@ -34,18 +34,30 @@ What it is not yet:
 ## Configuration Flow
 
 ```mermaid
-flowchart LR
-  A["Sync official and public model sources"] --> B["Build normalized model catalog"]
-  B --> C["Show provider list in app settings"]
-  C --> D["User chooses provider"]
-  D --> E["Show provider-specific auth form"]
-  E --> F["Validate or connect credentials"]
-  F --> G["List recommended, latest, and all models"]
-  G --> H["Set primary model and fallback chain"]
-  H --> I["Save routing config and provider connection"]
-  I --> J["Use the selected route in the AI application"]
-  J --> K["Refresh from admin when models or credentials change"]
-  K --> B
+flowchart TB
+  subgraph Row1[""]
+    direction LR
+    A["1. Sync official and public<br/>model sources"] --> B["2. Build normalized<br/>model catalog"]
+    B --> C["3. Show provider list<br/>in app settings"]
+    C --> D["4. User chooses<br/>provider"]
+  end
+
+  subgraph Row2[""]
+    direction RL
+    E["5. Show provider-specific<br/>auth form"] --> F["6. Validate or connect<br/>credentials"]
+    F --> G["7. List recommended,<br/>latest, and all models"]
+    G --> H["8. Set primary model<br/>and fallback chain"]
+  end
+
+  subgraph Row3[""]
+    direction LR
+    I["9. Save routing config<br/>and provider connection"] --> J["10. Use the selected route<br/>in the AI application"]
+    J --> K["11. Refresh from admin when<br/>models or credentials change"]
+  end
+
+  D --> E
+  H --> I
+  K -. "resync" .-> B
 ```
 
 ## What You Get
