@@ -200,7 +200,6 @@ Use:
 - [examples/next-starter](./examples/next-starter): a runnable Next.js example with `/admin`
 - [references/integration-guide.md](./references/integration-guide.md): shortest path for importing this into an existing app
 - [references/deployment-playbook.md](./references/deployment-playbook.md): deployment and production notes
-- [references/mvp-next-phase-plan.md](./references/mvp-next-phase-plan.md): focused roadmap for the next iteration
 
 ## Recommended Reading Order
 
@@ -238,13 +237,3 @@ That includes:
 - a basic admin workflow
 
 It does not currently optimize for every product category or every provider-specific edge case.
-
-## Next Focus
-
-The next phase is intentionally narrow:
-
-- make integration faster to understand
-- validate in a second real AI application
-- reduce adoption friction without expanding into a broader platform
-
-See [references/mvp-next-phase-plan.md](./references/mvp-next-phase-plan.md).
