@@ -21,6 +21,16 @@ What it is not yet:
 - a zero-customization package for every stack
 - a finished platform for every provider or deployment model
 
+## Screenshots
+
+### Starter landing page
+
+![Starter landing page](docs/screenshots/landing.png)
+
+### Admin console
+
+![Admin console](docs/screenshots/admin-console.png)
+
 ## What You Get
 
 ### 1. Provider-first setup
