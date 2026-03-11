@@ -31,6 +31,23 @@ What it is not yet:
 
 ![Admin console](docs/screenshots/admin-console.png)
 
+## Configuration Flow
+
+```mermaid
+flowchart LR
+  A["Sync official and public model sources"] --> B["Build normalized model catalog"]
+  B --> C["Show provider list in app settings"]
+  C --> D["User chooses provider"]
+  D --> E["Show provider-specific auth form"]
+  E --> F["Validate or connect credentials"]
+  F --> G["List recommended, latest, and all models"]
+  G --> H["Set primary model and fallback chain"]
+  H --> I["Save routing config and provider connection"]
+  I --> J["Use the selected route in the AI application"]
+  J --> K["Refresh from admin when models or credentials change"]
+  K --> B
+```
+
 ## What You Get
 
 ### 1. Provider-first setup
